@@ -144,6 +144,7 @@ The app is intended for official firmware and compatible forks, including Moment
 - `docs/changelog.md`: release history and pending changes
 - `docs/screenshots/`: padded screenshots for GitHub README presentation
 - `docs/catalog_screenshots/`: unmodified screenshots reserved for catalog submission
+- `.catalog/`: catalog submission description, changelog, and raw screenshot assets
 - `CONTRIBUTING.md`: contributor workflow
 
 ## Release Notes Discipline
