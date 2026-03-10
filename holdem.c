@@ -15,7 +15,276 @@ static void holdem_draw_line(Canvas* canvas, uint8_t y, const char* text) {
     canvas_draw_str(canvas, 0, y, text);
 }
 
+static void holdem_draw_line_right(Canvas* canvas, uint8_t y, const char* text) {
+    canvas_draw_str_aligned(canvas, 127, y, AlignRight, AlignBottom, text);
+}
 
+static const char* holdem_display_name(const Player* player) {
+    if(!player->is_bot) return "You";
+    return player->name;
+}
+
+static char holdem_role_char(const HoldemGame* game, int player_index) {
+    if(player_index == game->button) return 'D';
+    if(player_index == game->sb_idx) return 'S';
+    if(player_index == game->bb_idx) return 'B';
+    return '-';
+}
+
+static char holdem_status_char(const Player* player) {
+    if(player->stack <= 0) return 'X';
+    if(!player->in_hand) return 'F';
+    if(player->all_in) return 'A';
+    return 'P';
+}
+
+static void holdem_build_display_order(const HoldemGame* game, size_t order[HOLDEM_MAX_PLAYERS]) {
+    size_t write_index = 0;
+
+    // Keep all-in players in the active cluster until the hand fully resolves.
+    // They only sink to the bottom once they have zero chips and are out of the hand.
+    for(size_t player_index = 0; player_index < game->player_count; player_index++) {
+        const Player* player = &game->players[player_index];
+        if(player->stack > 0 || player->in_hand) order[write_index++] = player_index;
+    }
+
+    for(size_t player_index = 0; player_index < game->player_count; player_index++) {
+        const Player* player = &game->players[player_index];
+        if(player->stack <= 0 && !player->in_hand) order[write_index++] = player_index;
+    }
+
+
+}
+// This experiment only changes on-table rendering. Core card text helpers stay intact so
+// we can roll this back cheaply if the physical device result is not good enough.
+static bool holdem_use_suit_icons(void) {
+    return true;
+}
+
+#define HOLDEM_CARD_SLOT_WIDTH 16u
+#define HOLDEM_SUIT_ICON_WIDTH 8u
+#define HOLDEM_SUIT_BITMAP_SIZE 7u
+#define HOLDEM_CARD_AREA_START_X 96u
+
+// Bitmap-style suit pips are adapted for our compact table layout after studying the
+// MIT-licensed Flipper card helpers used by doofy-dev's blackjack project and helper repo.
+static const uint8_t k_holdem_suit_bitmap[4][HOLDEM_SUIT_BITMAP_SIZE] = {
+    {0x1Cu, 0x1Cu, 0x6Bu, 0x7Fu, 0x6Bu, 0x08u, 0x1Cu},
+    {0x08u, 0x14u, 0x22u, 0x41u, 0x22u, 0x14u, 0x08u},
+    {0x22u, 0x55u, 0x49u, 0x41u, 0x22u, 0x14u, 0x08u},
+    {0x08u, 0x1Cu, 0x3Eu, 0x7Fu, 0x6Bu, 0x08u, 0x1Cu},
+};
+
+// FontSecondary is effectively fixed-width, so a simple width estimate keeps the layout fast.
+static uint8_t holdem_text_width(const char* text) {
+    return (uint8_t)(strlen(text) * 6u);
+}
+
+static void holdem_draw_suit_icon(Canvas* canvas, uint8_t x, uint8_t baseline_y, uint8_t suit) {
+    int icon_x = (int)x;
+    int icon_y = (int)baseline_y - 7;
+
+    for(uint8_t row = 0; row < HOLDEM_SUIT_BITMAP_SIZE; row++) {
+        uint8_t row_bits = k_holdem_suit_bitmap[suit & 0x03u][row];
+        for(uint8_t col = 0; col < HOLDEM_SUIT_BITMAP_SIZE; col++) {
+            if(row_bits & (uint8_t)(1u << (HOLDEM_SUIT_BITMAP_SIZE - 1u - col))) {
+                canvas_draw_dot(canvas, icon_x + col, icon_y + row);
+            }
+        }
+}
+}
+
+static uint8_t holdem_draw_card_token(Canvas* canvas, uint8_t x, uint8_t baseline_y, const char* token_text) {
+    uint8_t token_x = (uint8_t)(x + ((HOLDEM_CARD_SLOT_WIDTH - holdem_text_width(token_text)) / 2u));
+    canvas_draw_str(canvas, token_x, baseline_y, token_text);
+    return (uint8_t)(x + HOLDEM_CARD_SLOT_WIDTH);
+}
+
+static uint8_t holdem_draw_card(Canvas* canvas, uint8_t x, uint8_t baseline_y, Card card) {
+    char rank_text[2] = {0};
+    char card_text[3];
+    uint8_t suit_x;
+
+    card_to_str(card, card_text);
+    rank_text[0] = card_text[0];
+    canvas_draw_str(canvas, x, baseline_y, rank_text);
+
+    if(holdem_use_suit_icons()) {
+        suit_x = (uint8_t)(x + 6u + ((HOLDEM_SUIT_ICON_WIDTH - HOLDEM_SUIT_BITMAP_SIZE) / 2u));
+        holdem_draw_suit_icon(canvas, suit_x, baseline_y, card.suit);
+        return (uint8_t)(x + HOLDEM_CARD_SLOT_WIDTH);
+    }
+
+    canvas_draw_str(canvas, (uint8_t)(x + 6u), baseline_y, &card_text[1]);
+    return (uint8_t)(x + HOLDEM_CARD_SLOT_WIDTH);
+}
+
+static void holdem_draw_board_row(Canvas* canvas, const HoldemGame* game) {
+    const char* table_prefix = "Table:";
+    uint8_t draw_x = 0;
+
+    canvas_draw_str(canvas, draw_x, 16, table_prefix);
+    draw_x = (uint8_t)(holdem_text_width(table_prefix) + 6u);
+
+    if(game->board_count == 0) {
+        holdem_draw_card_token(canvas, draw_x, 16, "--");
+        return;
+    }
+
+    for(size_t board_index = 0; board_index < game->board_count; board_index++) {
+        draw_x = holdem_draw_card(canvas, draw_x, 16, game->board[board_index]);
+    }
+}
+
+
+static void holdem_draw_pause_cards(Canvas* canvas, uint8_t baseline_y, const char* label, const Card* cards, size_t card_count) {
+    uint8_t draw_x = 0;
+
+    canvas_draw_str(canvas, draw_x, baseline_y, label);
+    draw_x = (uint8_t)(holdem_text_width(label) + 2u);
+
+    for(size_t card_index = 0; card_index < card_count; card_index++) {
+        draw_x = holdem_draw_card(canvas, draw_x, baseline_y, cards[card_index]);
+    }
+}
+
+
+static void holdem_draw_firework(Canvas* canvas, int cx, int cy, uint8_t phase) {
+    static const int8_t burst_dx[8] = {0, 5, 7, 5, 0, -5, -7, -5};
+    static const int8_t burst_dy[8] = {-7, -5, 0, 5, 7, 5, 0, -5};
+    uint8_t radius = (uint8_t)(2u + (phase % 4u));
+
+    canvas_draw_dot(canvas, cx, cy);
+    for(size_t ray = 0; ray < 8; ray++) {
+        int x = cx + ((burst_dx[ray] * (int)radius) / 4);
+        int y = cy + ((burst_dy[ray] * (int)radius) / 4);
+        if(x >= 0 && x < 128 && y >= 0 && y < 64) canvas_draw_dot(canvas, x, y);
+    }
+}
+
+static void holdem_draw_interstitial_screen(Canvas* canvas, const HoldemApp* app) {
+    uint32_t anim_tick = furi_get_tick() / 120u;
+
+    canvas_draw_str_aligned(canvas, 64, 32, AlignCenter, AlignCenter, app->interstitial_text);
+    if(app->interstitial_fireworks) {
+        holdem_draw_firework(canvas, 24, 18, (uint8_t)(anim_tick & 0x03u));
+        holdem_draw_firework(canvas, 104, 18, (uint8_t)((anim_tick + 1u) & 0x03u));
+        holdem_draw_firework(canvas, 20, 48, (uint8_t)((anim_tick + 2u) & 0x03u));
+        holdem_draw_firework(canvas, 108, 48, (uint8_t)((anim_tick + 3u) & 0x03u));
+    }
+}
+
+static int32_t holdem_total_bankroll(const HoldemGame* game) {
+    int32_t total = game->pot;
+    for(size_t player_index = 0; player_index < game->player_count; player_index++) {
+        total += game->players[player_index].stack;
+    }
+    return total;
+}
+
+static bool qualifies_for_big_win(const HoldemApp* app, const PayoutResult* payout) {
+    int32_t total_bankroll = holdem_total_bankroll(&app->game);
+    if(total_bankroll <= 0 || payout->count == 0) return false;
+
+    int you_index = -1;
+    for(size_t player_index = 0; player_index < app->game.player_count; player_index++) {
+        if(!app->game.players[player_index].is_bot) {
+            you_index = (int)player_index;
+            break;
+        }
+    }
+    if(you_index < 0) return false;
+
+    return payout->payout[you_index] * 5 >= total_bankroll;
+}
+
+static bool show_interstitial_screen(HoldemApp* app, const char* text, bool fireworks, uint32_t duration_ms) {
+    app->mode = UiModeBigWin;
+    snprintf(app->interstitial_text, sizeof(app->interstitial_text), "%s", text);
+    app->interstitial_fireworks = fireworks;
+    view_port_update(app->view_port);
+    flush_input_queue(app);
+
+    uint32_t start_tick = furi_get_tick();
+    InputEvent ev;
+    while(app->running) {
+        if(duration_ms > 0 && (furi_get_tick() - start_tick) >= duration_ms) break;
+        view_port_update(app->view_port);
+        if(furi_message_queue_get(app->input_queue, &ev, 50) != FuriStatusOk) continue;
+        if(app->mode == UiModeBigWin && ev.type == InputTypeShort && (ev.key == InputKeyOk || ev.key == InputKeyBack)) break;
+        if(process_global_event(app, &ev)) {
+            if(app->exit_requested) return false;
+        }
+    }
+
+    app->mode = UiModeTable;
+    return !app->exit_requested;
+}
+
+static bool show_big_win_screen(HoldemApp* app) {
+    return show_interstitial_screen(app, "Big Win!", true, 2000u);
+}
+
+static void holdem_draw_player_row(
+    Canvas* canvas,
+    const HoldemGame* game,
+    const Player* player,
+    int player_index,
+    int active_idx,
+    bool showdown_waiting,
+    uint8_t showdown_winner_mask,
+    bool reveal_all,
+    uint8_t baseline_y) {
+    char prefix_line[32];
+    char stack_text[8];
+    const char* turn_mark = "  ";
+    uint8_t draw_x;
+
+    if(showdown_waiting && ((showdown_winner_mask >> player_index) & 0x1u)) {
+        turn_mark = "* ";
+    } else if(player_index == active_idx) {
+        turn_mark = "> ";
+    }
+
+    snprintf(stack_text, sizeof(stack_text), "$%d", (int)player->stack);
+    snprintf(
+        prefix_line,
+        sizeof(prefix_line),
+        "%s%-4s %c%c %s ",
+        turn_mark,
+        holdem_display_name(player),
+        holdem_role_char(game, player_index),
+        holdem_status_char(player),
+        stack_text);
+    canvas_draw_str(canvas, 0, baseline_y, prefix_line);
+    // Keep every two-card hand anchored to the same right-side column for a cleaner table.
+    // If the left-side metadata ever grows unusually wide, fall back to the measured width
+    // instead of overlapping the card area.
+    draw_x = holdem_text_width(prefix_line);
+    if(draw_x < HOLDEM_CARD_AREA_START_X) draw_x = HOLDEM_CARD_AREA_START_X;
+
+    if(!player->is_bot) {
+        draw_x = holdem_draw_card(canvas, draw_x, baseline_y, player->hole[0]);
+        holdem_draw_card(canvas, draw_x, baseline_y, player->hole[1]);
+    } else if(game->stage == StageShowdown) {
+        if(player->in_hand) {
+            draw_x = holdem_draw_card(canvas, draw_x, baseline_y, player->hole[0]);
+            holdem_draw_card(canvas, draw_x, baseline_y, player->hole[1]);
+        } else {
+            draw_x = holdem_draw_card_token(canvas, draw_x, baseline_y, "XX");
+            holdem_draw_card_token(canvas, draw_x, baseline_y, "XX");
+        }
+    } else if(!player->in_hand) {
+        draw_x = holdem_draw_card_token(canvas, draw_x, baseline_y, "XX");
+        holdem_draw_card_token(canvas, draw_x, baseline_y, "XX");
+    } else if(reveal_all) {
+        draw_x = holdem_draw_card(canvas, draw_x, baseline_y, player->hole[0]);
+        holdem_draw_card(canvas, draw_x, baseline_y, player->hole[1]);
+    } else {
+        draw_x = holdem_draw_card_token(canvas, draw_x, baseline_y, "??");
+        holdem_draw_card_token(canvas, draw_x, baseline_y, "??");
+    }
+}
 static void holdem_draw_callback(Canvas* canvas, void* ctx) {
     HoldemApp* app = ctx;
     canvas_clear(canvas);
@@ -60,6 +329,11 @@ static void holdem_draw_callback(Canvas* canvas, void* ctx) {
         return;
     }
 
+    if(app->mode == UiModeStartReady) {
+        canvas_draw_str_aligned(canvas, 64, 32, AlignCenter, AlignCenter, "Press OK to Start");
+        return;
+    }
+
     if(app->mode == UiModeHelp) {
         // Help is intentionally split across 3 focused pages for readability on 128x64.
         char help_line[40];
@@ -74,16 +348,20 @@ static void holdem_draw_callback(Canvas* canvas, void* ctx) {
             holdem_draw_line(canvas, 32, "L: Fold   R: Reset Bet");
             holdem_draw_line(canvas, 40, "Up/Down: Bet +/-");
             holdem_draw_line(canvas, 48, "");
-            holdem_draw_line(canvas, 56, "Up/Down: Next/Prev page");
+            holdem_draw_line(canvas, 53, "Up/Down: Next/Prev page");
             holdem_draw_line(canvas, 62, "OK/Back: Close help");
         } else if(app->help_page == 1) {
+            char blind_line[32];
+            char bot_line[32];
+            snprintf(blind_line, sizeof(blind_line), "Right: Edit blinds (%d/%d)", (int)menu_small_blind, (int)menu_big_blind);
+            snprintf(bot_line, sizeof(bot_line), "OK: Edit bots (%d)", (int)(app->configured_player_count - 1));
             holdem_draw_line(canvas, 8, "Game Menu 2/3");
             holdem_draw_line(canvas, 16, "");
-            holdem_draw_line(canvas, 24, help_line);
-            holdem_draw_line(canvas, 32, "Right: Edit blinds");
-            holdem_draw_line(canvas, 40, "Left: Start new game");
+            holdem_draw_line(canvas, 24, blind_line);
+            holdem_draw_line(canvas, 32, "");
+            holdem_draw_line(canvas, 40, bot_line);
             holdem_draw_line(canvas, 48, "");
-            holdem_draw_line(canvas, 56, "");
+            holdem_draw_line(canvas, 56, "Left: Start new game");
         } else {
             holdem_draw_line(canvas, 8, "Hand Ranks 3/3");
             holdem_draw_line(canvas, 16, "");
@@ -95,14 +373,40 @@ static void holdem_draw_callback(Canvas* canvas, void* ctx) {
         }
         return;
     }
+
     if(app->mode == UiModeBlindEdit) {
         char blind_line[40];
-        snprintf(blind_line, sizeof(blind_line), "New SB/BB: %d/%d", (int)app->blind_edit_sb, (int)(app->blind_edit_sb * 2));
+        snprintf(blind_line, sizeof(blind_line), "SB/BB: %d/%d", (int)app->blind_edit_sb, (int)(app->blind_edit_sb * 2));
         holdem_draw_line(canvas, 8, "Edit Blinds");
-        holdem_draw_line(canvas, 16, "Up/Down: SB +/-5");
-        holdem_draw_line(canvas, 24, "OK: Apply");
-        holdem_draw_line(canvas, 32, "Back: Cancel");
-        holdem_draw_line(canvas, 40, blind_line);
+        holdem_draw_line(canvas, 16, "");
+        holdem_draw_line(canvas, 24, blind_line);
+        holdem_draw_line(canvas, 32, "");
+        holdem_draw_line(canvas, 40, "Up/Down: SB +/-5");
+        holdem_draw_line(canvas, 48, "OK: Apply");
+        holdem_draw_line(canvas, 56, "Back: Cancel");
+        return;
+    }
+
+    if(app->mode == UiModeBotCountEdit) {
+        char summary_line[32];
+        snprintf(summary_line, sizeof(summary_line), "Number of Bots: %d", (int)(app->bot_count_edit_value - 1));
+        holdem_draw_line(canvas, 8, "Edit Bots");
+        holdem_draw_line(canvas, 16, "");
+        holdem_draw_line(canvas, 24, summary_line);
+        holdem_draw_line(canvas, 32, "");
+        holdem_draw_line(canvas, 40, "Up/Down: Bots +/-");
+        holdem_draw_line(canvas, 48, "OK: Apply");
+        holdem_draw_line(canvas, 56, "Back: Cancel");
+        return;
+    }
+
+    if(app->mode == UiModeRestartConfirm) {
+        holdem_draw_line(canvas, 8, "Restart Required");
+        holdem_draw_line(canvas, 20, "This change will");
+        holdem_draw_line(canvas, 28, "require a new game.");
+        holdem_draw_line(canvas, 40, "Restart now?");
+        holdem_draw_line(canvas, 52, "OK: Yes");
+        holdem_draw_line(canvas, 60, "Back: Cancel");
         return;
     }
 
@@ -118,88 +422,56 @@ static void holdem_draw_callback(Canvas* canvas, void* ctx) {
         holdem_draw_line(canvas, 8, app->pause_title);
         holdem_draw_line(canvas, 20, app->pause_body);
         holdem_draw_line(canvas, 32, app->pause_body2);
-        holdem_draw_line(canvas, 44, app->pause_body3);
+        if(app->pause_card_count > 0) {
+            holdem_draw_pause_cards(canvas, 44, app->pause_cards_label, app->pause_cards, app->pause_card_count);
+        } else {
+            holdem_draw_line(canvas, 44, app->pause_body3);
+        }
         holdem_draw_line(canvas, 56, app->pause_footer);
+        return;
+    }
+
+    if(app->mode == UiModeBigWin) {
+        holdem_draw_interstitial_screen(canvas, app);
         return;
     }
 
     char line[40];
     char top_line[40];
     snprintf(top_line, sizeof(top_line), "Hand %d %s Pot: $%d", (int)(app->game.hand_no + 1), k_stage_name[app->game.stage], (int)app->game.pot);
-    if(strlen(top_line) > 23) {
+    // Only compact the header after it clearly exceeds the visible width budget.
+    if(strlen(top_line) > 24) {
         snprintf(top_line, sizeof(top_line), "H%d %s Pot: $%d", (int)(app->game.hand_no + 1), k_stage_name[app->game.stage], (int)app->game.pot);
     }
-    if(strlen(top_line) > 23) {
+    if(strlen(top_line) > 24) {
         snprintf(top_line, sizeof(top_line), "H%d %s P:$%d", (int)(app->game.hand_no + 1), k_stage_name[app->game.stage], (int)app->game.pot);
     }
     snprintf(line, sizeof(line), "%s", top_line);
     holdem_draw_line(canvas, 8, line);
 
-    char board[28] = {0};
-    size_t pos = 0;
-    const char* table_prefix = "Table:";
-    for(size_t i = 0; table_prefix[i] != '\0' && pos + 1 < sizeof(board); i++) board[pos++] = table_prefix[i];
-    if(pos + 1 < sizeof(board)) board[pos++] = ' ';
-    if(app->game.board_count == 0) {
-        board[pos++] = '-';
-        board[pos++] = '-';
-    } else {
-        for(size_t i = 0; i < app->game.board_count && pos + 3 < sizeof(board); i++) {
-            char c[3];
-            card_to_str(app->game.board[i], c);
-            board[pos++] = c[0];
-            board[pos++] = c[1];
-            if(i + 1 < app->game.board_count) board[pos++] = ' ';
-        }
-    }
-    board[pos] = '\0';
-    holdem_draw_line(canvas, 16, board);
+    holdem_draw_board_row(canvas, &app->game);
 
     int active_idx = -1;
     if(app->mode == UiModeActionPrompt) active_idx = app->acting_idx;
     else if(app->bot_turn_active) active_idx = app->bot_turn_idx;
 
-    for(size_t i = 0; i < app->game.player_count; i++) {
-        Player* p = &app->game.players[i];
-        char c1[3] = "??";
-        char c2[3] = "??";
-        if(!p->is_bot) {
-            card_to_str(p->hole[0], c1);
-            card_to_str(p->hole[1], c2);
-        } else if(app->game.stage == StageShowdown) {
-            if(p->in_hand) {
-                card_to_str(p->hole[0], c1);
-                card_to_str(p->hole[1], c2);
-            } else {
-                c1[0] = 'X'; c1[1] = 'X'; c1[2] = '\0';
-                c2[0] = 'X'; c2[1] = 'X'; c2[2] = '\0';
-            }
-        } else if(!p->in_hand) {
-            c1[0] = 'X'; c1[1] = 'X'; c1[2] = '\0';
-            c2[0] = 'X'; c2[1] = 'X'; c2[2] = '\0';
-        } else if(app->reveal_all) {
-            card_to_str(p->hole[0], c1);
-            card_to_str(p->hole[1], c2);
-        }
-        char role[4] = "";
-        size_t rp = 0;
-        if((int)i == app->game.button) role[rp++] = 'D';
-        if((int)i == app->game.sb_idx) role[rp++] = 'S';
-        if((int)i == app->game.bb_idx) role[rp++] = 'B';
-        if(rp == 0) role[rp++] = '-';
-        role[rp] = '\0';
+    size_t display_order[HOLDEM_MAX_PLAYERS] = {0};
+    holdem_build_display_order(&app->game, display_order);
 
-        char st = p->in_hand ? (p->all_in ? 'A' : 'P') : 'F';
-        const char* turn_mark = "  ";
-        if(app->showdown_waiting && ((app->showdown_winner_mask >> i) & 0x1u)) {
-            turn_mark = "* ";
-        } else if((int)i == active_idx) {
-            turn_mark = "> ";
-        }
-        snprintf(line, sizeof(line), "%s%s %s $%d %c %s %s", turn_mark, p->name, role, (int)p->stack, st, c1, c2);
-        holdem_draw_line(canvas, 24 + (uint8_t)(8 * i), line);
+    for(size_t display_row = 0; display_row < app->game.player_count; display_row++) {
+        int player_index = (int)display_order[display_row];
+        Player* player = &app->game.players[player_index];
+        holdem_draw_player_row(
+            canvas,
+            &app->game,
+            player,
+            player_index,
+            active_idx,
+            app->showdown_waiting,
+            app->showdown_winner_mask,
+            app->reveal_all,
+            24 + (uint8_t)(8 * display_row));
     }
-
     if(app->mode == UiModeActionPrompt) {
         const char* ok_action = "Call";
         if(app->prompt_bet_total <= app->prompt_to_call) {
@@ -209,22 +481,20 @@ static void holdem_draw_callback(Canvas* canvas, void* ctx) {
         }
 
         snprintf(line, sizeof(line), "Bet: $%d", (int)app->prompt_bet_total);
-        holdem_draw_line(canvas, 54, line);
+        holdem_draw_line_right(canvas, 56, line);
         snprintf(line, sizeof(line), "OK %s L Fold R Reset", ok_action);
-        holdem_draw_line(canvas, 62, line);
+        holdem_draw_line_right(canvas, 64, line);
         holdem_draw_line(canvas, 64, "");
     } else if(app->bot_turn_active && app->bot_turn_idx >= 0 && app->bot_turn_idx < (int)app->game.player_count) {
-        if(((furi_get_tick() / 500u) % 2u) == 0u) {
-            snprintf(line, sizeof(line), "%s's Turn", app->game.players[app->bot_turn_idx].name);
-            canvas_draw_str_aligned(canvas, 64, 60, AlignCenter, AlignCenter, line);
-        }
+        const char* bot_status = app->bot_turn_text[0] ? app->bot_turn_text : app->game.players[app->bot_turn_idx].name;
+        canvas_draw_str_aligned(canvas, 64, 60, AlignCenter, AlignCenter, bot_status);
     } else {
         if(app->showdown_waiting) {
-            holdem_draw_line(canvas, 54, "Showdown: Cards Open");
-            holdem_draw_line(canvas, 62, "OK: Result screen");
+            holdem_draw_line_right(canvas, 56, "Showdown: Cards Open");
+            holdem_draw_line_right(canvas, 64, "OK: Result screen");
         } else {
-            holdem_draw_line(canvas, 54, "Back tap Help hold Exit");
-            holdem_draw_line(canvas, 62, "");
+            holdem_draw_line_right(canvas, 56, "Back tap Help hold Exit");
+            holdem_draw_line_right(canvas, 64, "");
         }
         holdem_draw_line(canvas, 64, "");
     }
@@ -251,9 +521,9 @@ static void show_exit_prompt(HoldemApp* app) {
 
 
 static void reset_to_new_game(HoldemApp* app) {
-    init_game(&app->game);
+    init_game_with_player_count(&app->game, app->configured_player_count);
     delete_save_on_storage();
-    app->mode = UiModeTable;
+    app->mode = UiModeStartReady;
     app->return_mode = UiModeTable;
     app->reveal_all = false;
     app->showdown_waiting = false;
@@ -261,33 +531,11 @@ static void reset_to_new_game(HoldemApp* app) {
     app->showdown_winner_mask = 0;
     app->bot_turn_active = false;
     app->bot_turn_idx = -1;
+    app->bot_turn_text[0] = '\0';
     app->pending_blinds_dirty = false;
     app->pending_small_blind = app->game.small_blind;
 }
 
-static bool prompt_pause_ok(HoldemApp* app, const char* title, const char* body, const char* body2, const char* body3, const char* ok_footer) {
-    app->mode = UiModePause;
-    app->reveal_all = true;
-    snprintf(app->pause_title, sizeof(app->pause_title), "%s", title);
-    snprintf(app->pause_body, sizeof(app->pause_body), "%s", body);
-    snprintf(app->pause_body2, sizeof(app->pause_body2), "%s", body2 ? body2 : "");
-    snprintf(app->pause_body3, sizeof(app->pause_body3), "%s", body3 ? body3 : "");
-    snprintf(app->pause_footer, sizeof(app->pause_footer), "%s", ok_footer ? ok_footer : "OK");
-    view_port_update(app->view_port);
-    flush_input_queue(app);
-
-    InputEvent ev;
-    while(app->running) {
-        if(furi_message_queue_get(app->input_queue, &ev, FuriWaitForever) != FuriStatusOk) continue;
-        if(process_global_event(app, &ev)) {
-            if(app->exit_requested) return false;
-            continue;
-        }
-        if(app->mode == UiModePause && ev.type == InputTypeShort && ev.key == InputKeyOk) return true;
-    }
-
-    return false;
-}
 
 static bool prompt_showdown_inspect(HoldemApp* app) {
     app->mode = UiModeTable;
@@ -376,13 +624,25 @@ static void apply_or_defer_blind_edit(HoldemApp* app, int32_t new_small_blind) {
 static void handle_back_short(HoldemApp* app) {
     if(app->mode == UiModeStartChoice) {
         delete_save_on_storage();
-        app->mode = UiModeTable;
+        app->mode = UiModeStartReady;
         view_port_update(app->view_port);
         return;
     }
 
     if(app->mode == UiModeBlindEdit) {
         // Cancel blind edit on short back.
+        app->mode = UiModeHelp;
+        view_port_update(app->view_port);
+        return;
+    }
+
+    if(app->mode == UiModeBotCountEdit) {
+        app->mode = UiModeHelp;
+        view_port_update(app->view_port);
+        return;
+    }
+
+    if(app->mode == UiModeRestartConfirm) {
         app->mode = UiModeHelp;
         view_port_update(app->view_port);
         return;
@@ -472,11 +732,22 @@ static bool process_global_event(HoldemApp* app, const InputEvent* ev) {
     if(app->mode == UiModeStartChoice) {
         if(ev->key == InputKeyOk) {
             (void)load_progress(&app->game);
+            app->configured_player_count = app->game.player_count;
+            app->bot_count_edit_value = app->configured_player_count;
             app->mode = UiModeTable;
             view_port_update(app->view_port);
             return true;
         }
         return false;
+    }
+
+    if(app->mode == UiModeStartReady) {
+        if(ev->key == InputKeyOk) {
+            app->mode = UiModeTable;
+            view_port_update(app->view_port);
+            return true;
+        }
+        return true;
     }
 
     if(app->mode == UiModeExitPrompt) {
@@ -498,6 +769,13 @@ static bool process_global_event(HoldemApp* app, const InputEvent* ev) {
 
         if(ev->key == InputKeyDown) {
             app->help_page = (uint8_t)((app->help_page + 1) % 3);
+            view_port_update(app->view_port);
+            return true;
+        }
+
+        if(app->help_page == 1 && ev->key == InputKeyOk) {
+            app->bot_count_edit_value = app->configured_player_count;
+            app->mode = UiModeBotCountEdit;
             view_port_update(app->view_port);
             return true;
         }
@@ -550,6 +828,44 @@ static bool process_global_event(HoldemApp* app, const InputEvent* ev) {
         return false;
     }
 
+    if(app->mode == UiModeBotCountEdit) {
+        if(ev->key == InputKeyUp) {
+            if(app->bot_count_edit_value < HOLDEM_MAX_PLAYERS) app->bot_count_edit_value++;
+            view_port_update(app->view_port);
+            return true;
+        }
+
+        if(ev->key == InputKeyDown) {
+            if(app->bot_count_edit_value > HOLDEM_MIN_PLAYERS) app->bot_count_edit_value--;
+            view_port_update(app->view_port);
+            return true;
+        }
+
+        if(ev->key == InputKeyOk) {
+            if(app->bot_count_edit_value == app->configured_player_count) {
+                app->mode = UiModeHelp;
+            } else {
+                app->mode = UiModeRestartConfirm;
+            }
+            view_port_update(app->view_port);
+            return true;
+        }
+
+        return false;
+    }
+
+    if(app->mode == UiModeRestartConfirm) {
+        if(ev->key == InputKeyOk) {
+            app->configured_player_count = app->bot_count_edit_value;
+            reset_to_new_game(app);
+            app->reset_requested = true;
+            view_port_update(app->view_port);
+            return true;
+        }
+
+        return false;
+    }
+
     return false;
 }
 // Drops queued input events so prior key presses never bleed into the next prompt.
@@ -568,27 +884,31 @@ static void show_hand_result_screen(HoldemApp* app, const PayoutResult* payout) 
 
     snprintf(app->pause_title, sizeof(app->pause_title), "Hand %d Result", app->game.hand_no);
     snprintf(app->pause_footer, sizeof(app->pause_footer), "OK: Next hand");
+    app->pause_cards_label[0] = '\0';
+    app->pause_card_count = 0;
     if(wi >= 0) {
         snprintf(app->pause_body, sizeof(app->pause_body), "%s +$%d", app->game.players[wi].name, (int)amt);
 
         if(app->game.stage == StageShowdown) {
             Card seven[7];
             Card best_five[5];
-            char best_five_text[20];
             seven[0] = app->game.players[wi].hole[0];
             seven[1] = app->game.players[wi].hole[1];
             for(size_t i = 0; i < 5; i++) seven[2 + i] = app->game.board[i];
             Score s = best_five_from_seven_with_cards(seven, best_five);
-            format_five_cards(best_five, best_five_text, sizeof(best_five_text));
+            sort_five_for_display(best_five);
             snprintf(app->pause_body2, sizeof(app->pause_body2), "Hand: %s", hand_rank_label(s.v[0]));
-            snprintf(app->pause_body3, sizeof(app->pause_body3), "Best5: %s", best_five_text);
+            snprintf(app->pause_cards_label, sizeof(app->pause_cards_label), "Best5:");
+            for(size_t card_index = 0; card_index < 5; card_index++) app->pause_cards[card_index] = best_five[card_index];
+            app->pause_card_count = 5;
+            app->pause_body3[0] = '\0';
         } else if(!app->game.players[wi].is_bot) {
-            char c1[3];
-            char c2[3];
-            card_to_str(app->game.players[wi].hole[0], c1);
-            card_to_str(app->game.players[wi].hole[1], c2);
             snprintf(app->pause_body2, sizeof(app->pause_body2), "Hand: Hole Cards");
-            snprintf(app->pause_body3, sizeof(app->pause_body3), "Cards: %s %s", c1, c2);
+            snprintf(app->pause_cards_label, sizeof(app->pause_cards_label), "Cards:");
+            app->pause_cards[0] = app->game.players[wi].hole[0];
+            app->pause_cards[1] = app->game.players[wi].hole[1];
+            app->pause_card_count = 2;
+            app->pause_body3[0] = '\0';
         } else {
             snprintf(app->pause_body2, sizeof(app->pause_body2), "Hand: XX");
             snprintf(app->pause_body3, sizeof(app->pause_body3), "Best5: XX");
@@ -627,6 +947,7 @@ static void wait_human_action(HoldemApp* app, int acting_idx, int32_t to_call, i
     app->action_ready = false;
     app->bot_turn_active = false;
     app->bot_turn_idx = -1;
+    app->bot_turn_text[0] = '\0';
 
     int32_t stack = app->game.players[acting_idx].stack;
     int32_t max_total = stack;
@@ -694,6 +1015,18 @@ static void wait_human_action(HoldemApp* app, int acting_idx, int32_t to_call, i
 
     app->mode = UiModeTable;
 }
+
+// Hold the most recent bot decision on-screen for the configured pacing interval.
+static void wait_for_bot_message(HoldemApp* app) {
+    if(!app->bot_delay_enabled || app->bot_delay_ms == 0) return;
+
+    uint32_t wait_start_tick = furi_get_tick();
+    while((furi_get_tick() - wait_start_tick) < app->bot_delay_ms) {
+        view_port_update(app->view_port);
+        furi_delay_ms(50);
+    }
+}
+
 // Executes one betting street until all required responses to the current bet are complete.
 static void run_betting_round(HoldemApp* app, int start_player_index, int32_t min_raise) {
     HoldemGame* game = &app->game;
@@ -718,9 +1051,10 @@ static void run_betting_round(HoldemApp* app, int start_player_index, int32_t mi
 
     app->bot_turn_active = false;
     app->bot_turn_idx = -1;
+    app->bot_turn_text[0] = '\0';
 
-    // If only one player can still bet, no further betting decisions are possible.
-    if(needs_action_count <= 1) return;
+    // If nobody can still bet, the street can advance immediately.
+    if(needs_action_count == 0) return;
 
     int active_player_index = start_player_index;
     while(
@@ -745,16 +1079,6 @@ static void run_betting_round(HoldemApp* app, int start_player_index, int32_t mi
         int32_t raise_amount = 0;
 
         if(active_player->is_bot) {
-            app->bot_turn_active = true;
-            app->bot_turn_idx = active_player_index;
-            if(app->bot_delay_enabled && app->bot_delay_ms > 0) {
-                uint32_t wait_start_tick = furi_get_tick();
-                while((furi_get_tick() - wait_start_tick) < app->bot_delay_ms) {
-                    view_port_update(app->view_port);
-                    furi_delay_ms(100);
-                }
-            }
-
             bot_action(
                 app,
                 game,
@@ -764,11 +1088,10 @@ static void run_betting_round(HoldemApp* app, int start_player_index, int32_t mi
                 current_bet,
                 &selected_action,
                 &raise_amount);
-            app->bot_turn_active = false;
-            app->bot_turn_idx = -1;
         } else {
             app->bot_turn_active = false;
             app->bot_turn_idx = -1;
+            app->bot_turn_text[0] = '\0';
             wait_human_action(app, active_player_index, to_call, min_raise);
             selected_action = app->chosen_action;
             raise_amount = app->chosen_raise_by;
@@ -809,9 +1132,34 @@ static void run_betting_round(HoldemApp* app, int start_player_index, int32_t mi
             }
         }
 
-        view_port_update(app->view_port);
+        if(active_player->is_bot) {
+            // Bot turns now use a single visible phase: show the chosen move on the
+            // updated board, pause, then continue to the next actor or street.
+            app->bot_turn_active = true;
+            app->bot_turn_idx = active_player_index;
+            if(selected_action == ActFold) {
+                snprintf(app->bot_turn_text, sizeof(app->bot_turn_text), "%s Folded", active_player->name);
+            } else if(selected_action == ActCheck) {
+                snprintf(app->bot_turn_text, sizeof(app->bot_turn_text), "%s Checked", active_player->name);
+            } else if(selected_action == ActCall) {
+                if(to_call > 0) {
+                    snprintf(app->bot_turn_text, sizeof(app->bot_turn_text), "%s Called $%d", active_player->name, (int)to_call);
+                } else {
+                    snprintf(app->bot_turn_text, sizeof(app->bot_turn_text), "%s Called", active_player->name);
+                }
+            } else if(selected_action == ActRaise) {
+                snprintf(app->bot_turn_text, sizeof(app->bot_turn_text), "%s Raised $%d", active_player->name, (int)active_player->street_bet);
+            }
+            view_port_update(app->view_port);
+            wait_for_bot_message(app);
+            app->bot_turn_active = false;
+            app->bot_turn_idx = -1;
+            app->bot_turn_text[0] = '\0';
+        } else {
+            view_port_update(app->view_port);
+        }
+
         // End the round only when everyone has responded to the current bet.
-        // Using <= 1 here incorrectly skipped the final pending player action.
         if(needs_action_count == 0) break;
         active_player_index++;
     }
@@ -1016,7 +1364,12 @@ static void startup_splash_and_jingle(HoldemApp* app) {
     flush_input_queue(app);
 }
 static void startup_choose_load_or_new(HoldemApp* app) {
-    if(!save_exists_on_storage()) return;
+    if(!save_exists_on_storage()) {
+        app->mode = UiModeStartReady;
+        view_port_update(app->view_port);
+        flush_input_queue(app);
+        return;
+    }
 
     app->mode = UiModeStartChoice;
     view_port_update(app->view_port);
@@ -1029,6 +1382,23 @@ static void startup_choose_load_or_new(HoldemApp* app) {
     }
 }
 
+// Waits at the explicit start gate used for brand-new games and manual restarts.
+static bool wait_for_start_confirmation(HoldemApp* app) {
+    if(app->mode != UiModeStartReady) return true;
+
+    view_port_update(app->view_port);
+    flush_input_queue(app);
+
+    InputEvent ev;
+    while(app->running && app->mode == UiModeStartReady) {
+        if(furi_message_queue_get(app->input_queue, &ev, FuriWaitForever) != FuriStatusOk) continue;
+        (void)process_global_event(app, &ev);
+        if(app->exit_requested) return false;
+    }
+
+    return app->running && !app->exit_requested;
+}
+
 // App lifecycle entrypoint: init services, run hand loop, persist on exit, release resources.
 int32_t holdem_main(void* p) {
     UNUSED(p);
@@ -1038,13 +1408,15 @@ int32_t holdem_main(void* p) {
     memset(app, 0, sizeof(HoldemApp));
 
     init_game(&app->game);
+    app->configured_player_count = app->game.player_count;
+    app->bot_count_edit_value = app->configured_player_count;
     app->pending_blinds_dirty = false;
     app->pending_small_blind = app->game.small_blind;
 
     app->running = true;
     set_ai_level(app, HOLDEM_AI_DEFAULT_LEVEL);
     set_bot_action_delay(app, true, HOLDEM_BOT_DELAY_MS);
-    app->mode = UiModeTable;
+    app->mode = UiModeStartReady;
     app->return_mode = UiModeTable;
 
     app->input_queue = furi_message_queue_alloc(16, sizeof(InputEvent));
@@ -1063,12 +1435,18 @@ int32_t holdem_main(void* p) {
     app->pending_small_blind = app->game.small_blind;
 
     while(app->running) {
+        if(!wait_for_start_confirmation(app)) break;
+
         PayoutResult payout;
         if(!resume_loaded_hand(app, &payout)) break;
         if(app->exit_requested) break;
         if(app->reset_requested) {
             reset_to_new_game(app);
             continue;
+        }
+
+        if(qualifies_for_big_win(app, &payout)) {
+            if(!show_big_win_screen(app)) break;
         }
 
         show_hand_result_screen(app, &payout);
@@ -1079,7 +1457,7 @@ int32_t holdem_main(void* p) {
         int champ = champion_idx(&app->game);
         bool you_busted = (app->game.players[0].stack <= 0);
         if(you_busted) {
-            if(!prompt_pause_ok(app, "Game Over", "You are out of chips", "", "", "OK: New game")) break;
+            if(!show_interstitial_screen(app, "Game Over", false, 0u)) break;
             if(app->exit_requested) break;
             reset_to_new_game(app);
             continue;
@@ -1087,14 +1465,12 @@ int32_t holdem_main(void* p) {
 
         if(champ >= 0) {
             if(champ == 0) {
-                if(!prompt_pause_ok(app, "Game Winner", "You won the table", "", "", "OK: New game")) break;
+                if(!show_interstitial_screen(app, "You Won!", true, 0u)) break;
                 if(app->exit_requested) break;
                 reset_to_new_game(app);
                 continue;
             } else {
-                char end_body[40];
-                snprintf(end_body, sizeof(end_body), "Winner: %s", app->game.players[champ].name);
-                if(!prompt_pause_ok(app, "Game Over", end_body, "", "", "OK: New game")) break;
+                if(!show_interstitial_screen(app, "Game Over", false, 0u)) break;
                 if(app->exit_requested) break;
                 reset_to_new_game(app);
                 continue;
@@ -1114,3 +1490,4 @@ int32_t holdem_main(void* p) {
     free(app);
     return 0;
 }
+

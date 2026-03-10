@@ -23,5 +23,8 @@ void apply_payout(HoldemGame* game, const PayoutResult* payout_result);
 void reset_street_bets(HoldemGame* game);
 int champion_idx(HoldemGame* game);
 void init_game(HoldemGame* game);
+void init_game_with_player_count(HoldemGame* game, size_t player_count);
 
 #endif
+
+

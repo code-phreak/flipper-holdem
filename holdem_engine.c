@@ -323,4 +323,16 @@ void init_game(HoldemGame* game) {
     snprintf(game->players[2].name, sizeof(game->players[2].name), "Bot2");
     game->players[2].stack = 1000;
     game->players[2].is_bot = true;
+
+    snprintf(game->players[3].name, sizeof(game->players[3].name), "Bot3");
+    game->players[3].stack = 1000;
+    game->players[3].is_bot = true;
 }
+
+void init_game_with_player_count(HoldemGame* game, size_t player_count) {
+    init_game(game);
+    if(player_count < HOLDEM_MIN_PLAYERS) player_count = HOLDEM_MIN_PLAYERS;
+    if(player_count > HOLDEM_MAX_PLAYERS) player_count = HOLDEM_MAX_PLAYERS;
+    game->player_count = player_count;
+}
+

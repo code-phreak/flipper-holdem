@@ -2,34 +2,38 @@
 
 Native single-player Texas Hold'em for Flipper Zero.
 
-Release 1 focuses on stable gameplay, clear controls, and maintainable open-source code.
+Release 1 is focused on stable gameplay, clear on-device controls, fair dealing, and a codebase that is easy for other developers to inspect and extend.
 
-## Release 1 Scope
+## Release 1 Features
 
-- 1 human player vs 2 CPU opponents
-- Full hand progression: Preflop, Flop, Turn, River, Showdown
-- Fold-win and showdown resolution with side-pot-aware payouts
-- In-game controls help, blind editor, and new-game reset
+- 1 human player versus 1 to 3 CPU opponents
+- Configurable bot count from the in-game menu
+- Full hand flow: Preflop, Flop, Turn, River, and Showdown
+- Fold-win and showdown resolution with side-pot-aware payout handling
 - Single-slot save/load flow
+- In-game controls help, blind editor, bot-count editor, and new-game reset
 - Startup splash and jingle
-- Hand result screen with payout and best 5 cards
+- Bot action pacing with readable on-screen decision messages
+- Hand result screen with payout details and best-five-card summary
+- Bitmap-style suit icons on the main table view and result-card summaries
+- Big Win interstitial plus persistent win/lose end screens
 
 ## Controls
 
-### In-hand
+### In Hand
 - `Left`: Fold
-- `OK`: Commit action (`Check`, `Call`, or `Raise` depending on current bet)
-- `Up/Down`: Increase/decrease current bet amount
-- `Right`: Reset current bet amount to default call/check value
+- `OK`: Commit the current action (`Check`, `Call`, or `Raise`)
+- `Up/Down`: Increase or decrease the current bet amount
+- `Right`: Reset the current bet amount to the default call/check value
 
 ### Global
 - `Back` short:
-  - From game screen: open Controls Help
-  - From menu screens: close/cancel current menu
+  - From the game screen: open Controls Help
+  - From menu screens: close or cancel the current menu
 - `Back` hold (1.5s): open `Exit Hold 'em`
 
-### Exit menu
-- `OK`: Save + Exit
+### Exit Menu
+- `OK`: Save and exit
 - `Back` short: Cancel
 - `Back` hold (1.5s): Exit without saving
 
@@ -38,27 +42,27 @@ Release 1 focuses on stable gameplay, clear controls, and maintainable open-sour
 Save path:
 - `/ext/apps_data/holdem/save.bin`
 
-Startup behavior when save exists:
+Startup behavior when a save exists:
 - `OK`: Load save
-- `Back`: Start new game and delete previous save
+- `Back`: Start a new game and delete the previous save
 
 There is only one save slot by design.
 
 ## Fairness and RNG
 
-Dealing fairness is based on:
-- Hardware RNG (`furi_hal_random_fill_buf`)
-- Fisher-Yates shuffle over all 52 cards
+Card dealing fairness is based on:
+- Hardware RNG via `furi_hal_random_fill_buf`
+- Fisher-Yates shuffle across all 52 cards before each hand
 
-Current bounded random helper uses modulo reduction (`value % upper_bound`).
+Current bounded random selection uses modulo reduction (`value % upper_bound`).
 
 What this guarantees:
 - No duplicate cards in a hand
-- Full-deck shuffle every hand
+- A full-deck shuffle every hand
 - No AI influence over card distribution
 
-What remains open for improvement:
-- Replace modulo reduction with rejection sampling to remove modulo bias completely.
+What remains open for future improvement:
+- Replace modulo reduction with rejection sampling to eliminate modulo bias entirely
 
 ## Build
 
@@ -70,18 +74,10 @@ ufbt
 Build output:
 - `dist/holdem.fap`
 
-## Install (Quick UAT from Repo)
-
-If the repo already includes a built artifact:
+## Install
 
 1. Connect Flipper Zero over USB.
-2. Drag-and-drop `dist/holdem.fap` into `/ext/apps/Games/`.
-3. Launch from `Apps -> Games -> Hold 'em`.
-
-## Install (Local Build)
-
-1. Connect Flipper Zero over USB.
-2. Build locally (`ufbt update`, `ufbt`).
+2. Build locally with `ufbt update` and `ufbt`.
 3. Copy `dist/holdem.fap` to `/ext/apps/Games/`.
 4. Launch from `Apps -> Games -> Hold 'em`.
 
@@ -91,23 +87,32 @@ Target/API:
 - Target 7
 - API 87.1
 
-Designed for official firmware and common compatible forks (including Momentum) that preserve external-app API compatibility.
+The app is intended for official firmware and compatible forks, including Momentum, as long as they preserve external-app API compatibility.
 
 ## Repository Layout
 
-- `holdem.c`: app orchestration, UI, input state handling
-- `holdem_engine.c/.h`: core gameplay mechanics
+- `holdem.c`: app orchestration, rendering, and input/state handling
+- `holdem_engine.c/.h`: gameplay flow, pot handling, and showdown logic
 - `holdem_ai.c/.h`: bot decision logic
-- `holdem_eval.c/.h`: hand evaluation and card formatting
+- `holdem_eval.c/.h`: hand evaluation and card formatting helpers
 - `holdem_storage.c/.h`: save/load management
 - `holdem_types.h`: shared types and constants
 - `application.fam`: app metadata
 - `holdem.png`: app icon
-- `dist/holdem.fap`: current shared UAT artifact (temporary workflow)
 - `docs/architecture.md`: architecture and extension notes
-- `docs/roadmap.md`: planned future enhancements
-- `docs/changelog.md`: placeholder until Release 1 is finalized
+- `docs/roadmap.md`: release follow-up and deferred work
+- `docs/changelog.md`: placeholder until the first tagged release is cut
 - `CONTRIBUTING.md`: contributor workflow
+
+## Release Notes Discipline
+
+- Source control should not carry release binaries long-term.
+- Build artifacts should be generated locally or by release automation.
+- The `dist/` directory is intentionally ignored again before the public Release 1 merge.
+
+## Future Considerations
+
+- Lifetime total hands completed counter remains intentionally deferred until after Release 1.
 
 ## Contributing
 

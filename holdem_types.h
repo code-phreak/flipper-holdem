@@ -11,7 +11,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define HOLDEM_MAX_PLAYERS 3
+#define HOLDEM_MAX_PLAYERS 4
+#define HOLDEM_MIN_PLAYERS 2
+#define HOLDEM_DEFAULT_PLAYERS HOLDEM_MAX_PLAYERS
+#define HOLDEM_LEGACY_V1_PLAYERS 3
 #define HOLDEM_BOARD_MAX 5
 #define HOLDEM_DECK_SIZE 52
 #define HOLDEM_MAX_WINNERS HOLDEM_MAX_PLAYERS
@@ -21,7 +24,7 @@
 #define HOLDEM_SAVE_MAGIC 0x48444D31u
 #define HOLDEM_BACK_HOLD_MS 1500u
 #define HOLDEM_AI_DEFAULT_LEVEL 50u
-#define HOLDEM_BOT_DELAY_MS 1500u
+#define HOLDEM_BOT_DELAY_MS 1600u
 #define HOLDEM_BLIND_STEP_SB 5
 #define HOLDEM_ENDTURN_PAUSE_MS 500u
 
@@ -88,10 +91,14 @@ typedef enum {
     UiModeTable = 0,
     UiModeActionPrompt,
     UiModePause,
+    UiModeBigWin,
     UiModeHelp,
     UiModeBlindEdit,
+    UiModeBotCountEdit,
+    UiModeRestartConfirm,
     UiModeExitPrompt,
     UiModeStartChoice,
+    UiModeStartReady,
     UiModeSplash,
 } UiMode;
 
@@ -104,7 +111,7 @@ typedef struct {
 typedef struct {
     uint32_t magic;
     uint16_t version;
-    int32_t stack[HOLDEM_MAX_PLAYERS];
+    int32_t stack[HOLDEM_LEGACY_V1_PLAYERS];
     int32_t hand_no;
     int32_t button;
     int32_t sb;
@@ -134,6 +141,11 @@ typedef struct {
     char pause_body2[40];
     char pause_body3[40];
     char pause_footer[24];
+    char pause_cards_label[8];
+    Card pause_cards[5];
+    size_t pause_card_count;
+    char interstitial_text[20];
+    bool interstitial_fireworks;
     bool exit_requested;
     bool save_on_exit;
     bool back_down;
@@ -144,10 +156,13 @@ typedef struct {
     uint16_t bot_delay_ms;
     bool bot_turn_active;
     int bot_turn_idx;
+    char bot_turn_text[40];
     bool showdown_waiting;
     bool reset_requested;
     uint8_t showdown_winner_mask;
     int32_t blind_edit_sb;
+    size_t configured_player_count;
+    size_t bot_count_edit_value;
     int32_t pending_small_blind;
     bool pending_blinds_dirty;
     uint8_t help_page;
@@ -158,7 +173,4 @@ typedef struct {
 } Score;
 
 #endif
-
-
-
 
