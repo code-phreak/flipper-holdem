@@ -4,6 +4,9 @@
 
 #include <furi.h>
 
+// AI remains intentionally lightweight: a few heuristics, bounded randomness, and cheap math
+// so we stay within Flipper constraints while keeping room for later difficulty work.
+
 // Local clamp keeps AI math independent from UI/main modules.
 static int32_t clamp_i32(int32_t value, int32_t min_value, int32_t max_value) {
     if(value < min_value) return min_value;
@@ -11,7 +14,7 @@ static int32_t clamp_i32(int32_t value, int32_t min_value, int32_t max_value) {
     return value;
 }
 
-// Small helper for unbiased bounded random values.
+// Small helper for bounded random values.
 static uint32_t random_uniform(uint32_t upper_bound) {
     if(upper_bound <= 1) return 0;
     uint32_t value = 0;
@@ -164,6 +167,8 @@ void bot_action(
     const Player* player = &game->players[acting_player_index];
     (void)current_bet;
 
+    // Preflop and postflop use different heuristics, but both collapse to the same 0..100 scale
+    // so downstream action thresholds stay easy to tune.
     int strength =
         (game->stage == StagePreflop) ?
             preflop_strength(game, acting_player_index, app->ai_level_pct) :

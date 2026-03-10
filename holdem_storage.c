@@ -4,6 +4,8 @@
 
 #include <string.h>
 
+// Version 2 saves predate the fourth seat. We keep a local copy of the old layout so
+// migration code can stay explicit instead of relying on fragile size assumptions.
 typedef struct {
     char name[8];
     int32_t stack;
@@ -89,6 +91,7 @@ bool save_progress(const HoldemGame* game) {
         save.version = 3;
         save.game = *game;
 
+        // Persist the whole gameplay snapshot so resume never has to infer hidden cards or board state.
         ok = (storage_file_write(file, &save, sizeof(save)) == sizeof(save));
         storage_file_close(file);
     }
@@ -123,7 +126,7 @@ static bool load_legacy_v2_save(File* file, HoldemGame* game) {
         current_player->hand_contrib = legacy_player->hand_contrib;
     }
 
-    // A pre-Bot3 save resumes safely by starting the next hand with the new seat added.
+    // A pre-four-player save resumes safely by starting the next hand with the extra seat added.
     game->small_blind = legacy_save.game.small_blind;
     game->big_blind = legacy_save.game.big_blind;
     game->button = legacy_save.game.button;
@@ -153,6 +156,7 @@ bool load_progress(HoldemGame* game) {
         size_t read = storage_file_read(file, &save, sizeof(save));
 
         if(read == sizeof(save) && save.magic == HOLDEM_SAVE_MAGIC && save.version == 3) {
+            // Validate the persisted snapshot before trusting it. A corrupt save should fail closed.
             if(
                 save.game.player_count >= HOLDEM_MIN_PLAYERS &&
                 save.game.player_count <= HOLDEM_MAX_PLAYERS &&
@@ -171,6 +175,7 @@ bool load_progress(HoldemGame* game) {
             memset(&legacy, 0, sizeof(legacy));
             if(storage_file_read(file, &legacy, sizeof(legacy)) == sizeof(legacy)) {
                 if(legacy.magic == HOLDEM_SAVE_MAGIC && legacy.version == 1) {
+                    // Version 1 only stored coarse table state, so we recover what we can and restart cleanly.
                     for(size_t player_index = 0; player_index < HOLDEM_LEGACY_V1_PLAYERS; player_index++) {
                         if(legacy.stack[player_index] > 0) {
                             game->players[player_index].stack = legacy.stack[player_index];

@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+// Stage labels are rendered in the footer and result views, so keep them short and stable.
 static const char* k_stage_name[] = {"PREFLOP", "FLOP", "TURN", "RIVER", "SHOWDOWN"};
 static bool process_global_event(HoldemApp* app, const InputEvent* ev);
 static void flush_input_queue(HoldemApp* app);
@@ -52,13 +54,6 @@ static void holdem_build_display_order(const HoldemGame* game, size_t order[HOLD
         const Player* player = &game->players[player_index];
         if(player->stack <= 0 && !player->in_hand) order[write_index++] = player_index;
     }
-
-
-}
-// This experiment only changes on-table rendering. Core card text helpers stay intact so
-// we can roll this back cheaply if the physical device result is not good enough.
-static bool holdem_use_suit_icons(void) {
-    return true;
 }
 
 #define HOLDEM_CARD_SLOT_WIDTH 16u
@@ -66,8 +61,8 @@ static bool holdem_use_suit_icons(void) {
 #define HOLDEM_SUIT_BITMAP_SIZE 7u
 #define HOLDEM_CARD_AREA_START_X 96u
 
-// Bitmap-style suit pips are adapted for our compact table layout after studying the
-// MIT-licensed Flipper card helpers used by doofy-dev's blackjack project and helper repo.
+// Bitmap suit pips let us keep compact card rendering without sacrificing readability.
+// The glyphs were tuned around the current table spacing and should be treated as a stable asset.
 static const uint8_t k_holdem_suit_bitmap[4][HOLDEM_SUIT_BITMAP_SIZE] = {
     {0x1Cu, 0x1Cu, 0x6Bu, 0x7Fu, 0x6Bu, 0x08u, 0x1Cu},
     {0x08u, 0x14u, 0x22u, 0x41u, 0x22u, 0x14u, 0x08u},
@@ -91,7 +86,7 @@ static void holdem_draw_suit_icon(Canvas* canvas, uint8_t x, uint8_t baseline_y,
                 canvas_draw_dot(canvas, icon_x + col, icon_y + row);
             }
         }
-}
+    }
 }
 
 static uint8_t holdem_draw_card_token(Canvas* canvas, uint8_t x, uint8_t baseline_y, const char* token_text) {
@@ -109,13 +104,8 @@ static uint8_t holdem_draw_card(Canvas* canvas, uint8_t x, uint8_t baseline_y, C
     rank_text[0] = card_text[0];
     canvas_draw_str(canvas, x, baseline_y, rank_text);
 
-    if(holdem_use_suit_icons()) {
-        suit_x = (uint8_t)(x + 6u + ((HOLDEM_SUIT_ICON_WIDTH - HOLDEM_SUIT_BITMAP_SIZE) / 2u));
-        holdem_draw_suit_icon(canvas, suit_x, baseline_y, card.suit);
-        return (uint8_t)(x + HOLDEM_CARD_SLOT_WIDTH);
-    }
-
-    canvas_draw_str(canvas, (uint8_t)(x + 6u), baseline_y, &card_text[1]);
+    suit_x = (uint8_t)(x + 6u + ((HOLDEM_SUIT_ICON_WIDTH - HOLDEM_SUIT_BITMAP_SIZE) / 2u));
+    holdem_draw_suit_icon(canvas, suit_x, baseline_y, card.suit);
     return (uint8_t)(x + HOLDEM_CARD_SLOT_WIDTH);
 }
 
@@ -199,6 +189,8 @@ static bool qualifies_for_big_win(const HoldemApp* app, const PayoutResult* payo
 }
 
 static bool show_interstitial_screen(HoldemApp* app, const char* text, bool fireworks, uint32_t duration_ms) {
+    // Reuse the same mode for timed celebration cards and persistent endgame screens.
+    // `duration_ms == 0` means "wait for explicit dismissal."
     app->mode = UiModeBigWin;
     snprintf(app->interstitial_text, sizeof(app->interstitial_text), "%s", text);
     app->interstitial_fireworks = fireworks;

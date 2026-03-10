@@ -57,7 +57,7 @@ Please include:
 
 ## Release Discipline
 
-Until Release 1 is finalized:
+Until the current release is finalized:
 
 - Keep changelog as placeholder only
 - Put major future work in `docs/roadmap.md`

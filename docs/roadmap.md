@@ -1,24 +1,24 @@
 # Roadmap
 
-This roadmap tracks the work that is intentionally deferred until after the first public Release 1 build of Hold 'em.
+This roadmap tracks the work intentionally deferred beyond the current release of Hold 'em.
 
 ## Status Key
 
 - Planned: agreed direction, not started
 - In Progress: actively implemented
 - Blocked: waiting on dependency, design decision, or validation
-- Deferred: intentionally out of Release 1 scope
+- Deferred: intentionally out of the current release scope
 - Done: shipped and verified
 
-## Release 1 Status
+## Current Release Status
 
-Release 1 implementation is feature-complete for current scope. Remaining work should be handled as release validation, bug fixing, documentation cleanup, or post-v1 planning rather than new feature expansion.
+The current release is feature-complete for its scope. Remaining work should be handled as validation, bug fixing, documentation cleanup, or next-release planning rather than new feature expansion.
 
-## Post-v1 Work
+## Next Release Candidates
 
 ### F-001 Lifetime Hands Completed Counter
 - Status: Deferred
-- Summary: Track total completed hands for the currently installed app instance after Release 1.
+- Summary: Track total completed hands for the currently installed app instance after the current release.
 - Future requirements:
   - Counter persists across app restarts.
   - Counter increments only when a hand reaches a completed result state.
@@ -27,7 +27,7 @@ Release 1 implementation is feature-complete for current scope. Remaining work s
 
 ### F-002 Configurable Progressive Blinds
 - Status: Deferred
-- Summary: Add optional progressive blind structures after Release 1.
+- Summary: Add optional progressive blind structures after the current release.
 - Future requirements:
   - Add enable/disable control and basic structure tuning.
   - Apply increases only at hand boundaries.
@@ -35,7 +35,7 @@ Release 1 implementation is feature-complete for current scope. Remaining work s
 
 ### F-003 Configurable Bot Difficulty
 - Status: Deferred
-- Summary: Add a player-facing bot difficulty setting after Release 1.
+- Summary: Add a player-facing bot difficulty setting after the current release.
 - Future requirements:
   - Preserve the current default balance as the initial setting.
   - Persist the chosen difficulty in save/config state.
@@ -43,7 +43,7 @@ Release 1 implementation is feature-complete for current scope. Remaining work s
 
 ### F-004 Winner Celebration Polish
 - Status: Deferred
-- Summary: Expand the winner presentation after Release 1 with audio, LED effects, and richer animation treatment.
+- Summary: Expand the winner presentation after the current release with audio, LED effects, and richer animation treatment.
 - Future requirements:
   - Add an optional winner tune.
   - Add celebratory LED behavior.
@@ -51,7 +51,7 @@ Release 1 implementation is feature-complete for current scope. Remaining work s
 
 ### F-005 Game Over Polish
 - Status: Deferred
-- Summary: Expand the game-over presentation after Release 1 with audio, LED effects, and richer animation treatment.
+- Summary: Expand the game-over presentation after the current release with audio, LED effects, and richer animation treatment.
 - Future requirements:
   - Add an optional game-over tune distinct from the winner tune.
   - Add a subdued LED pattern for losses.
@@ -66,8 +66,25 @@ Release 1 implementation is feature-complete for current scope. Remaining work s
   - Keep the effect optional until the visual result is validated.
   - Avoid cluttering active-player rows or reducing card readability.
 
+### F-007 New Startup Art
+- Status: Deferred
+- Summary: Replace or expand the current startup art with a more distinctive title-screen presentation.
+- Future requirements:
+  - Preserve legibility on the 128x64 display.
+  - Keep startup flow fast and input-safe.
+  - Revalidate spacing around prompt text and title lockup on device.
+
+### F-008 Sub-GHz Multiplayer Investigation
+- Status: Deferred
+- Summary: Evaluate whether synchronous multiplayer across multiple Flipper devices is feasible and worth pursuing.
+- Future requirements:
+  - Define a connection model that is reliable within Flipper hardware and regional radio constraints.
+  - Determine how to synchronize shuffles, betting actions, and reconnect behavior without trust issues.
+  - Confirm whether latency, packet loss, and user setup burden are acceptable for Texas Hold'em pacing.
+  - Keep the investigation separate from the single-device core game until feasibility is proven.
+
 ## Notes
 
 - Keep this file concise and implementation-focused.
 - Add new post-v1 items only when they are meaningfully defined.
-- Revisit deferred items after Release 1 is tagged and stabilized.
+- Revisit deferred items after the current release is tagged and stabilized.

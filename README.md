@@ -1,22 +1,79 @@
 # Hold 'em for Flipper Zero
 
-Native single-player Texas Hold'em for Flipper Zero.
+Native single-player Texas Hold'em built specifically for Flipper Zero.
 
-Release 1 is focused on stable gameplay, clear on-device controls, fair dealing, and a codebase that is easy for other developers to inspect and extend.
+Play a full table of compact, readable Hold 'em against up to three bots with real betting rounds, side-pot-aware showdowns, trustworthy save/load, and a UI tuned for the actual device screen. The current release is focused on feeling polished, fair, and immediately fun to play.
 
-## Release 1 Features
+## Screenshots
 
-- 1 human player versus 1 to 3 CPU opponents
-- Configurable bot count from the in-game menu
-- Full hand flow: Preflop, Flop, Turn, River, and Showdown
-- Fold-win and showdown resolution with side-pot-aware payout handling
-- Single-slot save/load flow
-- In-game controls help, blind editor, bot-count editor, and new-game reset
-- Startup splash and jingle
-- Bot action pacing with readable on-screen decision messages
-- Hand result screen with payout details and best-five-card summary
-- Bitmap-style suit icons on the main table view and result-card summaries
-- Big Win interstitial plus persistent win/lose end screens
+The current release on-device flow at a glance:
+
+<table>
+  <tr>
+    <td align="center" width="50%"><strong>Startup</strong></td>
+    <td align="center" width="50%"><strong>Main Table</strong></td>
+  </tr>
+  <tr>
+    <td align="center" width="50%"><img src="docs/screenshots/01-first-screen.png" alt="Start screen" width="100%" /></td>
+    <td align="center" width="50%"><img src="docs/screenshots/02-main-table.png" alt="Main table" width="100%" /></td>
+  </tr>
+  <tr>
+    <td align="center" width="50%"><strong>Controls</strong></td>
+    <td align="center" width="50%"><strong>Game Settings</strong></td>
+  </tr>
+  <tr>
+    <td align="center" width="50%"><img src="docs/screenshots/04-menu-1.png" alt="Game menu" width="100%" /></td>
+    <td align="center" width="50%"><img src="docs/screenshots/05-menu-2.png" alt="Settings menu" width="100%" /></td>
+  </tr>
+  <tr>
+    <td align="center" width="50%"><strong>Big Win</strong></td>
+    <td align="center" width="50%"><strong>Showdown</strong></td>
+  </tr>
+  <tr>
+    <td align="center" width="50%"><img src="docs/screenshots/03-big-win.png" alt="Big Win screen" width="100%" /></td>
+    <td align="center" width="50%"><img src="docs/screenshots/06-hand-showdown.png" alt="Showdown screen" width="100%" /></td>
+  </tr>
+  <tr>
+    <td align="center" width="50%"><strong>Hand Result</strong></td>
+    <td align="center" width="50%"><strong>Game Win</strong></td>
+  </tr>
+  <tr>
+    <td align="center" width="50%"><img src="docs/screenshots/07-hand-result.png" alt="Hand result screen" width="100%" /></td>
+    <td align="center" width="50%"><img src="docs/screenshots/08-you-won.png" alt="You Won screen" width="100%" /></td>
+  </tr>
+</table>
+
+## Features
+
+- Full Texas Hold'em hand flow on-device, from preflop through showdown
+- Play heads-up or expand the table up to four total players with 1 to 3 bots
+- Side-pot-aware payouts and showdown resolution for real multi-way hands
+- Fast, readable table UI built for the actual Flipper screen, not just emulator screenshots
+- Compact bitmap suit icons and clear card summaries that stay legible during play
+- Human-friendly bot pacing with visible action text so each betting round is easy to follow
+- In-game blind editing, bot-count configuration, controls help, and one-tap new-game reset
+- Single-slot save/load that preserves the full game state for trustworthy resume behavior
+
+## Build
+
+```bash
+ufbt update
+ufbt
+```
+
+Build output:
+- `dist/holdem.fap`
+
+## Install
+
+1. Connect Flipper Zero over USB.
+2. Build locally with `ufbt update` and `ufbt`.
+3. Copy `dist/holdem.fap` to `/ext/apps/Games/`.
+4. Launch from `Apps -> Games -> Hold 'em`.
+
+## Changelog
+
+- [docs/changelog.md](docs/changelog.md)
 
 ## Controls
 
@@ -64,23 +121,6 @@ What this guarantees:
 What remains open for future improvement:
 - Replace modulo reduction with rejection sampling to eliminate modulo bias entirely
 
-## Build
-
-```bash
-ufbt update
-ufbt
-```
-
-Build output:
-- `dist/holdem.fap`
-
-## Install
-
-1. Connect Flipper Zero over USB.
-2. Build locally with `ufbt update` and `ufbt`.
-3. Copy `dist/holdem.fap` to `/ext/apps/Games/`.
-4. Launch from `Apps -> Games -> Hold 'em`.
-
 ## Firmware Notes
 
 Target/API:
@@ -101,18 +141,20 @@ The app is intended for official firmware and compatible forks, including Moment
 - `holdem.png`: app icon
 - `docs/architecture.md`: architecture and extension notes
 - `docs/roadmap.md`: release follow-up and deferred work
-- `docs/changelog.md`: placeholder until the first tagged release is cut
+- `docs/changelog.md`: release history and pending changes
+- `docs/screenshots/`: padded screenshots for GitHub README presentation
+- `docs/catalog_screenshots/`: unmodified screenshots reserved for catalog submission
 - `CONTRIBUTING.md`: contributor workflow
 
 ## Release Notes Discipline
 
 - Source control should not carry release binaries long-term.
 - Build artifacts should be generated locally or by release automation.
-- The `dist/` directory is intentionally ignored again before the public Release 1 merge.
+- The `dist/` directory is intentionally ignored before the public release branch is merged.
 
-## Future Considerations
+## Acknowledgements
 
-- Lifetime total hands completed counter remains intentionally deferred until after Release 1.
+- The compact bitmap suit presentation was inspired by [flipper_blackjack](https://github.com/doofy-dev/flipper_blackjack).
 
 ## Contributing
 

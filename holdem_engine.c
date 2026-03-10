@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdio.h>
 
-// Small helper for unbiased bounded random values.
+// Small helper for bounded random values.
 static uint32_t random_uniform(uint32_t upper_bound) {
     if(upper_bound <= 1) return 0;
     uint32_t value = 0;
@@ -100,6 +100,8 @@ Card pop_card(HoldemGame* game) {
 }
 
 void reset_hand(HoldemGame* game) {
+    // Hand reset preserves long-lived table state like stacks, button position, and blind size,
+    // but wipes every per-hand field so the next deal starts from a clean slate.
     init_deck(game);
     game->board_count = 0;
     game->pot = 0;
@@ -117,6 +119,7 @@ void reset_hand(HoldemGame* game) {
 bool post_blinds(HoldemGame* game) {
     if(alive_count(game) < 2) return false;
 
+    // Dealer and blind positions only advance across players who still have chips.
     game->button = next_alive(game, game->button + 1);
     game->sb_idx = next_alive(game, game->button + 1);
     game->bb_idx = next_alive(game, game->sb_idx + 1);
@@ -137,6 +140,7 @@ void deal_hole(HoldemGame* game) {
 }
 
 void deal_community(HoldemGame* game, size_t card_count) {
+    // Burn one card before each community reveal to match real Hold'em dealing flow.
     (void)pop_card(game);
     for(size_t board_index = 0; board_index < card_count; board_index++) {
         game->board[game->board_count++] = pop_card(game);
@@ -216,6 +220,7 @@ void resolve_showdown(HoldemGame* game, PayoutResult* payout_result) {
             }
         }
 
+        // Each unique contribution level defines one side-pot layer.
         int32_t layer_size = (current_level - previous_level) * (int32_t)players_in_layer_count;
         previous_level = current_level;
         if(layer_size <= 0 || contender_count == 0) continue;

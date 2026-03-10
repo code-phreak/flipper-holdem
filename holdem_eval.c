@@ -2,6 +2,7 @@
 
 #include <string.h>
 
+// Rank/suit lookup tables back the compact "AH" style formatter used by save diagnostics and UI helpers.
 static const char k_rank_char[] = "23456789TJQKA";
 static const char k_suit_char[] = {'C', 'D', 'H', 'S'};
 
@@ -43,6 +44,7 @@ int score_cmp(const Score* left, const Score* right) {
 }
 
 Score eval5(const Card cards[5]) {
+    // Score vectors are ordered by hand class first, then by kickers, so lexicographic comparison works.
     Score score = {.v = {0, 0, 0, 0, 0, 0}};
     uint8_t rank_counts[13] = {0};
     uint8_t suit_counts[4] = {0};
@@ -204,6 +206,8 @@ Score best_five_from_seven(const Card cards[7]) {
 }
 
 Score best_five_from_seven_with_cards(const Card cards[7], Card best_five[5]) {
+    // This variant mirrors `best_five_from_seven` but also returns the exact winning five cards
+    // so showdown UI can present something meaningful instead of just a category label.
     Score best_score = {.v = {-1, -1, -1, -1, -1, -1}};
 
     for(size_t combo_index = 0; combo_index < 21; combo_index++) {
