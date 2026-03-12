@@ -2,7 +2,7 @@
 
 Native single-player Texas Hold'em built specifically for Flipper Zero.
 
-Play a full table of compact, readable Hold 'em against up to three bots with real betting rounds, side-pot-aware showdowns, trustworthy save/load, and a UI tuned for the actual device screen. The current release is focused on feeling polished, fair, and immediately fun to play.
+Play a full table of compact, readable Hold 'em against up to four bots with real betting rounds, side-pot-aware showdowns, trustworthy save/load, and a UI tuned for the actual device screen. The current branch is focused on carrying that polished v1.0 foundation into a denser, smarter v1.1 table.
 
 ## Screenshots
 
@@ -46,11 +46,15 @@ The current release on-device flow at a glance:
 ## Features
 
 - Full Texas Hold'em hand flow on-device, from preflop through showdown
-- Play heads-up or expand the table up to four total players with 1 to 3 bots
+- Play heads-up or expand the table up to five total players with 1 to 4 bots
 - Side-pot-aware payouts and showdown resolution for real multi-way hands
 - Fast, readable table UI built for the actual Flipper screen, not just emulator screenshots
 - Compact bitmap suit icons and clear card summaries that stay legible during play
 - Human-friendly bot pacing with visible action text so each betting round is easy to follow
+- Four bot difficulty tiers: Easy, Medium, Hard, and Extreme
+- Bot heuristics factor in betting pressure and stack commitment so weak hands are less likely to wander into suspicious all-ins
+- Bot-count and difficulty settings are preserved across restart, save/load, and new-game flow
+- Optional progressive blinds can be enabled from the blind editor, stay off by default, and only advance at safe hand boundaries
 - In-game blind editing, bot-count configuration, controls help, and one-tap new-game reset
 - Single-slot save/load that preserves the full game state for trustworthy resume behavior
 
@@ -104,6 +108,7 @@ Startup behavior when a save exists:
 - `Back`: Start a new game and delete the previous save
 
 There is only one save slot by design.
+Gameplay settings such as bot difficulty and progressive blinds are included in the saved state.
 
 ## Fairness and RNG
 
@@ -120,6 +125,17 @@ What this guarantees:
 
 What remains open for future improvement:
 - Replace modulo reduction with rejection sampling to eliminate modulo bias entirely
+
+## AI
+
+Bot difficulty is exposed as `Easy`, `Medium`, `Hard`, and `Extreme`, with `Medium` as the default table setting.
+
+At the top end, `Extreme` goes beyond the baseline heuristic bot by:
+- reacting more carefully to real betting pressure
+- valuing strong broadway and connector structures more accurately preflop
+- factoring in draw development postflop instead of playing only made hands
+- tightening bluff frequency while pushing harder for value with credible strength
+- avoiding weak stack-off lines more aggressively when pots get large
 
 ## Firmware Notes
 
@@ -143,8 +159,7 @@ The app is intended for official firmware and compatible forks, including Moment
 - `docs/roadmap.md`: release follow-up and deferred work
 - `docs/changelog.md`: release history and pending changes
 - `docs/screenshots/`: padded screenshots for GitHub README presentation
-- `docs/catalog_screenshots/`: unmodified screenshots reserved for catalog submission
-- `.catalog/`: catalog submission description, changelog, and raw screenshot assets
+- `.catalog/`: Flipper catalog submission description, changelog, and raw screenshot assets
 - `CONTRIBUTING.md`: contributor workflow
 
 ## Release Notes Discipline

@@ -332,6 +332,10 @@ void init_game(HoldemGame* game) {
     snprintf(game->players[3].name, sizeof(game->players[3].name), "Bot3");
     game->players[3].stack = 1000;
     game->players[3].is_bot = true;
+
+    snprintf(game->players[4].name, sizeof(game->players[4].name), "Bot4");
+    game->players[4].stack = 1000;
+    game->players[4].is_bot = true;
 }
 
 void init_game_with_player_count(HoldemGame* game, size_t player_count) {

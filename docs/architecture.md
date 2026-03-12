@@ -46,9 +46,26 @@ This keeps the inspect/result UX consistent and avoids premature stack updates.
 ## Save/Load
 
 - Single save slot: `/ext/apps_data/holdem/save.bin`
-- Save contains the full `HoldemGame` state for deterministic resume
+- Save contains the full `HoldemGame` state plus persisted gameplay settings such as bot difficulty and progressive-blind configuration
 - Starting a new game from startup choice clears prior save
 - Legacy save migration is handled in `holdem_storage.c` and should stay conservative
+
+## Bot AI
+
+- Bot behavior is driven by a lightweight heuristic layer in `holdem_ai.c`
+- The player-facing difficulty tiers map to internal AI levels: `Easy` (20), `Medium` (50), `Hard` (80), and `Extreme` (110)
+- `Medium` is the default setting and acts as the balance baseline for new tuning work
+- Core decision inputs include preflop hand quality, postflop made-hand strength, board wetness, pot odds, betting pressure, and stack-commitment risk
+- `Extreme` adds stronger preflop hand-shape reading, postflop draw awareness, tighter bluff discipline, and more assertive value raising without abandoning the single-threaded lightweight runtime budget
+
+## Current Branch Focus
+
+- Five total players are now supported, with one human and up to four bots
+- The denser table layout depends on footer compaction and tighter menu spacing in `holdem.c`
+- Player rows on the main table now use fixed visual columns for names, role/status markers, stack text, and hidden-card placeholders
+- Bot-count and difficulty settings are treated as persistent gameplay settings and survive save/load plus new-game resets
+- Blind editing now has an optional progressive mode that stays disabled by default and advances blinds only between hands
+- Foreground gameplay prompts are queued behind open menus so live turns and results do not steal focus from active menu screens
 
 ## Extension Guidance
 

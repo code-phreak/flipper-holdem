@@ -1,6 +1,6 @@
 # Roadmap
 
-This roadmap tracks the work intentionally deferred beyond the current release of Hold 'em.
+This roadmap tracks the next planned work beyond the shipped v1.0 baseline of Hold 'em.
 
 ## Status Key
 
@@ -10,9 +10,9 @@ This roadmap tracks the work intentionally deferred beyond the current release o
 - Deferred: intentionally out of the current release scope
 - Done: shipped and verified
 
-## Current Release Status
+## Branch Status
 
-The current release is feature-complete for its scope. Remaining work should be handled as validation, bug fixing, documentation cleanup, or next-release planning rather than new feature expansion.
+The public v1.0 release is stable. Current branch work is focused on the next release, including larger table support, UI tightening, and future-facing AI improvements.
 
 ## Next Release Candidates
 
@@ -26,20 +26,36 @@ The current release is feature-complete for its scope. Remaining work should be 
   - Behavior for save deletion, reinstall, and firmware migration must be documented.
 
 ### F-002 Configurable Progressive Blinds
-- Status: Deferred
-- Summary: Add optional progressive blind structures after the current release.
-- Future requirements:
-  - Add enable/disable control and basic structure tuning.
+- Status: In Progress
+- Summary: Optional progressive blind structures are now wired into the blind editor and save state, with final on-device validation still pending.
+- Current scope:
+  - Keep the feature off by default.
   - Apply increases only at hand boundaries.
   - Preserve save/load correctness with an active structure.
 
+### F-010 Cursor-Based Menu Navigation
+- Status: Planned
+- Summary: Update dense settings menus to use a highlighted row with inline `L/R` increment and decrement controls.
+- Future requirements:
+  - Preserve the current compact three-button mental model on the Flipper screen.
+  - Keep edit state readable without crowding rows with too much instructional text.
+  - Reuse the interaction pattern across bot, blind, and future settings menus.
+
 ### F-003 Configurable Bot Difficulty
-- Status: Deferred
-- Summary: Add a player-facing bot difficulty setting after the current release.
+- Status: Done
+- Summary: Added player-facing bot difficulty settings on top of the shipped v1.0 baseline.
 - Future requirements:
   - Preserve the current default balance as the initial setting.
   - Persist the chosen difficulty in save/config state.
   - Keep the AI path extensible for richer future behavior.
+
+### F-009 Fifth-Seat Table Expansion
+- Status: Done
+- Summary: Expanded the live table from four total players to five total players with a fourth bot and tightened table/menu layout.
+- Current scope:
+  - Preserve row readability on the 128x64 display.
+  - Keep footer, result, and help flows readable with the denser table.
+  - Maintain save/load correctness and bot-count restart behavior.
 
 ### F-004 Winner Celebration Polish
 - Status: Deferred
@@ -87,4 +103,4 @@ The current release is feature-complete for its scope. Remaining work should be 
 
 - Keep this file concise and implementation-focused.
 - Add new post-v1 items only when they are meaningfully defined.
-- Revisit deferred items after the current release is tagged and stabilized.
+- Revisit deferred items as the next release scope becomes clear.

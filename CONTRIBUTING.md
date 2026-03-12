@@ -57,8 +57,9 @@ Please include:
 
 ## Release Discipline
 
-Until the current release is finalized:
+For each release cycle:
 
-- Keep changelog as placeholder only
+- Keep `docs/changelog.md` current with concise user-facing notes
+- Keep `.catalog/CHANGELOG.md` aligned with the latest public release notes used for catalog submission
 - Put major future work in `docs/roadmap.md`
 - Keep private deployment/submission notes out of this repo

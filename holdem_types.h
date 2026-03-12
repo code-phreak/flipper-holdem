@@ -11,10 +11,11 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define HOLDEM_MAX_PLAYERS 4
+#define HOLDEM_MAX_PLAYERS 5
 #define HOLDEM_MIN_PLAYERS 2
 #define HOLDEM_DEFAULT_PLAYERS HOLDEM_MAX_PLAYERS
 #define HOLDEM_LEGACY_V1_PLAYERS 3
+#define HOLDEM_LEGACY_V3_PLAYERS 4
 #define HOLDEM_BOARD_MAX 5
 #define HOLDEM_DECK_SIZE 52
 #define HOLDEM_MAX_WINNERS HOLDEM_MAX_PLAYERS
@@ -23,9 +24,20 @@
 #define HOLDEM_SAVE_DIR "/ext/apps_data/holdem"
 #define HOLDEM_SAVE_MAGIC 0x48444D31u
 #define HOLDEM_BACK_HOLD_MS 1500u
-#define HOLDEM_AI_DEFAULT_LEVEL 50u
+#define HOLDEM_AI_EASY_LEVEL 20u
+#define HOLDEM_AI_MEDIUM_LEVEL 50u
+#define HOLDEM_AI_HARD_LEVEL 80u
+#define HOLDEM_AI_EXTREME_LEVEL 110u
+#define HOLDEM_AI_DEFAULT_LEVEL HOLDEM_AI_MEDIUM_LEVEL
 #define HOLDEM_BOT_DELAY_MS 1600u
 #define HOLDEM_BLIND_STEP_SB 5
+#define HOLDEM_PROGRESSIVE_DEFAULT_PERIOD_HANDS 5u
+#define HOLDEM_PROGRESSIVE_DEFAULT_STEP_SB 40
+#define HOLDEM_PROGRESSIVE_MIN_PERIOD_HANDS 5u
+#define HOLDEM_PROGRESSIVE_MAX_PERIOD_HANDS 99u
+#define HOLDEM_PROGRESSIVE_PERIOD_STEP_HANDS 5u
+#define HOLDEM_PROGRESSIVE_MIN_STEP_SB 5
+#define HOLDEM_PROGRESSIVE_MAX_STEP_SB 500
 #define HOLDEM_ENDTURN_PAUSE_MS 500u
 
 typedef enum {
@@ -106,6 +118,11 @@ typedef struct {
     uint32_t magic;
     uint16_t version;
     HoldemGame game;
+    uint8_t ai_level_pct;
+    bool progressive_blinds_enabled;
+    uint8_t progressive_period_hands;
+    int32_t progressive_step_sb;
+    int32_t progressive_next_raise_hand_no;
 } HoldemSave;
 
 typedef struct {
@@ -158,13 +175,23 @@ typedef struct {
     int bot_turn_idx;
     char bot_turn_text[40];
     bool showdown_waiting;
+    bool skip_autoplay_requested;
     bool reset_requested;
     uint8_t showdown_winner_mask;
     int32_t blind_edit_sb;
     size_t configured_player_count;
     size_t bot_count_edit_value;
+    uint8_t configured_ai_level_pct;
+    uint8_t bot_difficulty_edit_value;
+    bool progressive_blinds_enabled;
+    uint8_t progressive_period_hands;
+    int32_t progressive_step_sb;
+    int32_t progressive_next_raise_hand_no;
     int32_t pending_small_blind;
     bool pending_blinds_dirty;
+    bool blind_edit_progressive_enabled;
+    uint8_t blind_edit_progressive_period_hands;
+    int32_t blind_edit_progressive_step_sb;
     uint8_t help_page;
 } HoldemApp;
 

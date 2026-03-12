@@ -5,3 +5,4 @@ v1.0
 - Side-pot-aware showdown resolution
 - Single-slot save/load support
 - Blind and bot-count configuration
+- Big Win celebration and persistent win/loss end screens
