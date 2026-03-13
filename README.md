@@ -4,6 +4,8 @@ Native single-player Texas Hold'em built specifically for Flipper Zero.
 
 Play a full table of compact, readable Hold 'em against up to four bots with real betting rounds, side-pot-aware showdowns, trustworthy save/load, and a UI tuned for the actual device screen. The current branch is focused on carrying that polished v1.0 foundation into a denser, smarter v1.1 table.
 
+The latest in-progress source lives on active feature branches on GitHub before it is folded back into `main`.
+
 ## Screenshots
 
 The current release on-device flow at a glance:
@@ -50,11 +52,14 @@ The current release on-device flow at a glance:
 - Side-pot-aware payouts and showdown resolution for real multi-way hands
 - Fast, readable table UI built for the actual Flipper screen, not just emulator screenshots
 - Compact bitmap suit icons and clear card summaries that stay legible during play
+- Control hints now use compact glyphs for back, left/right actions, page navigation, and folded-autoplay fast-forward where space matters
 - Human-friendly bot pacing with visible action text so each betting round is easy to follow
 - Four bot difficulty tiers: Easy, Medium, Hard, and Extreme
 - Bot heuristics factor in betting pressure and stack commitment so weak hands are less likely to wander into suspicious all-ins
 - Bot-count and difficulty settings are preserved across restart, save/load, and new-game flow
 - Optional progressive blinds can be enabled from the blind editor, stay off by default, and only advance at safe hand boundaries
+- Progressive blind increases surface a short centered level-up notice before the next hand begins when the saved schedule says one is due
+- Every fresh hand now gets a short `Hand Start` beat after cards are dealt so the table state is readable before action begins
 - In-game blind editing, bot-count configuration, controls help, and one-tap new-game reset
 - Single-slot save/load that preserves the full game state for trustworthy resume behavior
 
@@ -86,6 +91,7 @@ Build output:
 - `OK`: Commit the current action (`Check`, `Call`, or `Raise`)
 - `Up/Down`: Increase or decrease the current bet amount
 - `Right`: Reset the current bet amount to the default call/check value
+- After folding, `OK` can fast-forward through the remaining autoplayed bot action
 
 ### Global
 - `Back` short:
@@ -109,6 +115,7 @@ Startup behavior when a save exists:
 
 There is only one save slot by design.
 Gameplay settings such as bot difficulty and progressive blinds are included in the saved state.
+Saved progressive-blind timing state is also preserved so future increases still trigger on the correct hand after load.
 
 ## Fairness and RNG
 

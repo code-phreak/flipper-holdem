@@ -31,6 +31,7 @@ The public v1.0 release is stable. Current branch work is focused on the next re
 - Current scope:
   - Keep the feature off by default.
   - Apply increases only at hand boundaries.
+  - Show a short blind-level notification before the next hand when an increase is due.
   - Preserve save/load correctness with an active structure.
 
 ### F-010 Cursor-Based Menu Navigation
@@ -39,7 +40,16 @@ The public v1.0 release is stable. Current branch work is focused on the next re
 - Future requirements:
   - Preserve the current compact three-button mental model on the Flipper screen.
   - Keep edit state readable without crowding rows with too much instructional text.
+  - Reconcile the new icon-led control language with row selection so prompts stay terse.
   - Reuse the interaction pattern across bot, blind, and future settings menus.
+
+### F-011 Screenshot Refresh Before Next Release
+- Status: Planned
+- Summary: Refresh README and release-facing screenshots once the current v1.1 UI work stabilizes.
+- Future requirements:
+  - Replace stale captures that still reflect the older four-seat layout and earlier menu wording.
+  - Keep the GitHub gallery and future release assets aligned with the actual shipped UI.
+  - Reuse the existing padded README presentation workflow after the final raw captures are approved.
 
 ### F-003 Configurable Bot Difficulty
 - Status: Done

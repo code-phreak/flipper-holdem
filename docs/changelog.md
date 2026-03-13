@@ -16,14 +16,18 @@ This changelog follows a lightweight Keep a Changelog style.
 - Result-screen prompts and in-hand footer layout were tightened up to free space for a fourth bot row.
 - Player rows now use fixed columns so turn markers, role/status flags, stacks, and hidden-card placeholders stay visually aligned.
 - Table header and board placeholder alignment are now measured dynamically so hand, stage, pot, and preflop board state stay visually centered and stable.
+- Help, menu, footer, and cancel prompts now use compact bitmap control glyphs where screen space is tight.
 - Bot decision logic now accounts for betting pressure, tones down low pocket-pair aggression preflop, and avoids weak stack-off lines.
 - Extreme AI now plays a sharper heuristic game with stronger pressure handling, draw awareness, and more disciplined bluffing.
 - Bot-count and difficulty settings now persist cleanly through restart, save/load, and new-game flow.
 - Blind editing now supports a progressive-blinds mode that stays off by default and only advances at hand boundaries.
 - Progressive blind periods now step in five-hand increments, with clearer blind-editor labeling.
+- Progressive blind increases now surface a short centered notification before `Hand Start` when the saved schedule says a new level is due.
+- Freshly dealt hands now pause briefly on a stable `Hand Start` beat before action begins.
 
 ### Fixed
 - Folded autoplay no longer flashes the generic help footer, and `OK` now skips ahead to the next showdown or win step cleanly.
+- Folded autoplay now keeps its dedicated fast-forward affordance through bot turns without leaking the generic idle hint before results.
 - Live gameplay events no longer kick the player out of open menus before they choose to return to the table.
 
 ## Planned

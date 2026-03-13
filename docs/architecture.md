@@ -27,12 +27,13 @@ This document describes how the Hold 'em app is organized so contributors can ex
 ## Hand Flow
 
 1. Reset/deal/post blinds
-2. Run betting rounds by stage
-3. Resolve fold-win or showdown payout map
-4. Show inspect/result screens
-5. Apply payout only after result acknowledgement
-6. Show endgame or restart-ready screen when a champion is decided
-7. Advance hand counter and continue
+2. Show short hand-boundary notifications such as progressive blind increases and `Hand Start`
+3. Run betting rounds by stage
+4. Resolve fold-win or showdown payout map
+5. Show inspect/result screens
+6. Apply payout only after result acknowledgement
+7. Show endgame or restart-ready screen when a champion is decided
+8. Advance hand counter and continue
 
 ## Payout Timing
 
@@ -49,6 +50,7 @@ This keeps the inspect/result UX consistent and avoids premature stack updates.
 - Save contains the full `HoldemGame` state plus persisted gameplay settings such as bot difficulty and progressive-blind configuration
 - Starting a new game from startup choice clears prior save
 - Legacy save migration is handled in `holdem_storage.c` and should stay conservative
+- Progressive blind scheduling persists via the next scheduled raise hand number, so a loaded save can trigger the next blind increase at the correct future hand boundary
 
 ## Bot AI
 
@@ -63,8 +65,11 @@ This keeps the inspect/result UX consistent and avoids premature stack updates.
 - Five total players are now supported, with one human and up to four bots
 - The denser table layout depends on footer compaction and tighter menu spacing in `holdem.c`
 - Player rows on the main table now use fixed visual columns for names, role/status markers, stack text, and hidden-card placeholders
+- Inline bitmap glyphs now carry part of the UI language for back, navigation, left/right actions, and folded-autoplay fast-forward
 - Bot-count and difficulty settings are treated as persistent gameplay settings and survive save/load plus new-game resets
 - Blind editing now has an optional progressive mode that stays disabled by default and advances blinds only between hands
+- When a progressive increase is due, the app shows a short non-animated blind-level notification before the next `Hand Start` beat
+- Every newly dealt hand shows a short `Hand Start` beat after fresh cards are in place so the visible table state is stable before action starts
 - Foreground gameplay prompts are queued behind open menus so live turns and results do not steal focus from active menu screens
 
 ## Extension Guidance

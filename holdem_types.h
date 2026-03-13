@@ -161,7 +161,7 @@ typedef struct {
     char pause_cards_label[8];
     Card pause_cards[5];
     size_t pause_card_count;
-    char interstitial_text[20];
+    char interstitial_text[40];
     bool interstitial_fireworks;
     bool exit_requested;
     bool save_on_exit;

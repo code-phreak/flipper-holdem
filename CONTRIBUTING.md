@@ -15,10 +15,11 @@ This project targets Flipper Zero runtime constraints, so correctness and simpli
 ## Development Setup
 
 1. Install `ufbt` and toolchain.
-2. Build from repo root:
+2. Use the appropriate active feature branch if you want to run or contribute to the latest in-progress release work. `main` is kept as the stable public release line.
+3. Build from repo root:
    - `ufbt update`
    - `ufbt`
-3. Artifact output:
+4. Artifact output:
    - `dist/holdem.fap`
 
 ## Coding Expectations
