@@ -108,6 +108,7 @@ typedef enum {
     UiModeBlindEdit,
     UiModeBotCountEdit,
     UiModeRestartConfirm,
+    UiModeNewGameConfirm,
     UiModeExitPrompt,
     UiModeStartChoice,
     UiModeStartReady,

@@ -15,8 +15,11 @@ This changelog follows a lightweight Keep a Changelog style.
 - Main table and menu layout were revised to preserve readability for the larger five-player table.
 - Result-screen prompts and in-hand footer layout were tightened up to free space for a fourth bot row.
 - Player rows now use fixed columns so turn markers, role/status flags, stacks, and hidden-card placeholders stay visually aligned.
+- Folded pre-showdown bot rows now add a compact strike cue across the hidden `XX XX` placeholders instead of changing the rest of the row.
 - Table header and board placeholder alignment are now measured dynamically so hand, stage, pot, and preflop board state stay visually centered and stable.
 - Help, menu, footer, and cancel prompts now use compact bitmap control glyphs where screen space is tight.
+- The board row no longer uses a `Table:` label and now centers the visible community cards as a unit.
+- Startup, exit, result, and gameplay prompts now use the shared OK glyph treatment instead of mixed text-only `OK` labels.
 - Bot decision logic now accounts for betting pressure, tones down low pocket-pair aggression preflop, and avoids weak stack-off lines.
 - Extreme AI now plays a sharper heuristic game with stronger pressure handling, draw awareness, and more disciplined bluffing.
 - Bot-count and difficulty settings now persist cleanly through restart, save/load, and new-game flow.
@@ -29,6 +32,7 @@ This changelog follows a lightweight Keep a Changelog style.
 - Folded autoplay no longer flashes the generic help footer, and `OK` now skips ahead to the next showdown or win step cleanly.
 - Folded autoplay now keeps its dedicated fast-forward affordance through bot turns without leaking the generic idle hint before results.
 - Live gameplay events no longer kick the player out of open menus before they choose to return to the table.
+- Canceling `Exit Hold 'em` no longer resurrects the old idle footer hint on the game board.
 
 ## Planned
 

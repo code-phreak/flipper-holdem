@@ -21,7 +21,7 @@ This document describes how the Hold 'em app is organized so contributors can ex
 - `UiModeRestartConfirm`: Confirm restart after bot-count change
 - `UiModeExitPrompt`: Exit/save prompt
 - `UiModeStartChoice`: Startup load/new choice
-- `UiModeStartReady`: Clean startup state waiting for `OK`
+- `UiModeStartReady`: Clean startup state waiting at the explicit start gate
 - `UiModeSplash`: Startup splash + audio
 
 ## Hand Flow
@@ -65,7 +65,9 @@ This keeps the inspect/result UX consistent and avoids premature stack updates.
 - Five total players are now supported, with one human and up to four bots
 - The denser table layout depends on footer compaction and tighter menu spacing in `holdem.c`
 - Player rows on the main table now use fixed visual columns for names, role/status markers, stack text, and hidden-card placeholders
-- Inline bitmap glyphs now carry part of the UI language for back, navigation, left/right actions, and folded-autoplay fast-forward
+- Folded pre-showdown bot rows keep their `XX XX` placeholders and add a narrow strike cue across the pair so fold state reads faster without exposing cards
+- Inline bitmap glyphs now carry part of the UI language for confirm, back, navigation, left/right actions, and folded-autoplay fast-forward
+- The board row now stands without a `Table:` label and centers the visible community cards as a unit
 - Bot-count and difficulty settings are treated as persistent gameplay settings and survive save/load plus new-game resets
 - Blind editing now has an optional progressive mode that stays disabled by default and advances blinds only between hands
 - When a progressive increase is due, the app shows a short non-animated blind-level notification before the next `Hand Start` beat

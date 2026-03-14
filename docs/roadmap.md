@@ -51,6 +51,14 @@ The public v1.0 release is stable. Current branch work is focused on the next re
   - Keep the GitHub gallery and future release assets aligned with the actual shipped UI.
   - Reuse the existing padded README presentation workflow after the final raw captures are approved.
 
+### F-012 Configurable Bot Pause Length
+- Status: Planned
+- Summary: Let players choose how long bot action messages pause between decisions.
+- Future requirements:
+  - Preserve the current default pacing as the recommended baseline.
+  - Allow fast autoplay without removing the ability to read betting flow.
+  - Keep the setting persistent across save/load and new-game flow if it becomes user-facing.
+
 ### F-003 Configurable Bot Difficulty
 - Status: Done
 - Summary: Added player-facing bot difficulty settings on top of the shipped v1.0 baseline.
@@ -65,6 +73,7 @@ The public v1.0 release is stable. Current branch work is focused on the next re
 - Current scope:
   - Preserve row readability on the 128x64 display.
   - Keep footer, result, and help flows readable with the denser table.
+  - Mark folded pre-showdown bot rows with a lightweight cue on the `XX XX` placeholders without exposing cards or cluttering the full row.
   - Maintain save/load correctness and bot-count restart behavior.
 
 ### F-004 Winner Celebration Polish
@@ -82,15 +91,6 @@ The public v1.0 release is stable. Current branch work is focused on the next re
   - Add an optional game-over tune distinct from the winner tune.
   - Add a subdued LED pattern for losses.
   - Expand the current game-over presentation without obscuring restart flow.
-
-### F-006 Busted Player Strikethrough Experiment
-- Status: Deferred
-- Summary: Evaluate drawing a strike-through treatment for busted bot rows to improve scanability.
-- Future requirements:
-  - Prototype a lightweight strike-through overlay for busted bot names or full rows.
-  - Confirm readability on-device with the current font and row spacing.
-  - Keep the effect optional until the visual result is validated.
-  - Avoid cluttering active-player rows or reducing card readability.
 
 ### F-007 New Startup Art
 - Status: Deferred

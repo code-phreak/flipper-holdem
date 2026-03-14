@@ -52,7 +52,8 @@ The current release on-device flow at a glance:
 - Side-pot-aware payouts and showdown resolution for real multi-way hands
 - Fast, readable table UI built for the actual Flipper screen, not just emulator screenshots
 - Compact bitmap suit icons and clear card summaries that stay legible during play
-- Control hints now use compact glyphs for back, left/right actions, page navigation, and folded-autoplay fast-forward where space matters
+- Folded pre-showdown bot rows keep their hidden `XX XX` placeholders with a compact strike cue for faster state scanning
+- Control hints now use compact glyphs for confirm, back, left/right actions, page navigation, and folded-autoplay fast-forward where space matters
 - Human-friendly bot pacing with visible action text so each betting round is easy to follow
 - Four bot difficulty tiers: Easy, Medium, Hard, and Extreme
 - Bot heuristics factor in betting pressure and stack commitment so weak hands are less likely to wander into suspicious all-ins
@@ -60,7 +61,7 @@ The current release on-device flow at a glance:
 - Optional progressive blinds can be enabled from the blind editor, stay off by default, and only advance at safe hand boundaries
 - Progressive blind increases surface a short centered level-up notice before the next hand begins when the saved schedule says one is due
 - Every fresh hand now gets a short `Hand Start` beat after cards are dealt so the table state is readable before action begins
-- In-game blind editing, bot-count configuration, controls help, and one-tap new-game reset
+- In-game blind editing, bot-count configuration, controls help, and a confirmation-backed new-game reset
 - Single-slot save/load that preserves the full game state for trustworthy resume behavior
 
 ## Build
