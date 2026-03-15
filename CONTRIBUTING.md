@@ -29,6 +29,8 @@ This project targets Flipper Zero runtime constraints, so correctness and simpli
 - Add comments where logic is non-obvious.
 - Keep hot paths efficient (UI draw, hand loop, AI decision flow).
 - Avoid speculative abstraction unless it reduces maintenance cost now.
+- Keep modules purpose-specific and contributor-friendly. As a working rule, aim to keep source files under 1000 lines unless there is a very strong reason not to.
+- Prefer extending the split app structure (`holdem_ui_common`, `holdem_ui_render`, `holdem_ui_flow`, `holdem_gameplay`) over pushing everything back into one large file.
 
 ## PR Guidelines
 

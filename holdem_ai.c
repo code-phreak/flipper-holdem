@@ -283,6 +283,7 @@ void bot_action(
     int32_t to_call,
     int32_t min_raise,
     int32_t current_bet,
+    bool can_raise,
     HoldemAction* action,
     int32_t* amount) {
     const Player* player = &game->players[acting_player_index];
@@ -318,6 +319,7 @@ void bot_action(
             (decision_strength < 55 && random_roll < bluff_window && board_wetness(game) < (extreme_ai ? 60 : 70));
 
         if(
+            can_raise &&
             raise_by > 0 && can_commit_stack(game, player, raise_by, decision_strength, app->ai_level_pct) &&
             (raise_for_value || light_bluff)) {
             *action = ActRaise;
@@ -345,6 +347,7 @@ void bot_action(
 
     int32_t raise_by = choose_raise_by(game, player, to_call, min_raise, strength);
     if(
+        can_raise &&
         raise_by > 0 &&
         can_commit_stack(game, player, to_call + raise_by, decision_strength, app->ai_level_pct) &&
         decision_strength >= (required_strength + (extreme_ai ? 16 : 22)) &&

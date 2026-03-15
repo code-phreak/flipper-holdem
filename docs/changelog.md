@@ -12,6 +12,7 @@ This changelog follows a lightweight Keep a Changelog style.
 - Optional progressive blinds with period and increase tuning from the blind editor.
 
 ### Changed
+- The app/controller code was split out of the old monolithic `holdem.c` into dedicated UI/common, render, flow, and gameplay modules so contributors can work in smaller, purpose-specific files.
 - Main table and menu layout were revised to preserve readability for the larger five-player table.
 - Result-screen prompts and in-hand footer layout were tightened up to free space for a fourth bot row.
 - Player rows now use fixed columns so turn markers, role/status flags, stacks, and hidden-card placeholders stay visually aligned.
@@ -27,12 +28,18 @@ This changelog follows a lightweight Keep a Changelog style.
 - Progressive blind periods now step in five-hand increments, with clearer blind-editor labeling.
 - Progressive blind increases now surface a short centered notification before `Hand Start` when the saved schedule says a new level is due.
 - Freshly dealt hands now pause briefly on a stable `Hand Start` beat before action begins.
+- Blind and bot editors now behave like staged settings screens with dynamic save affordances instead of always-on control legends.
+- Split-pot result screens now show a representative payout winner plus a `[Split Pot]` callout instead of pretending every paid hand has a single undisputed winner.
+- Default bot action pacing was tightened slightly so autoplay remains readable without feeling quite as slow.
 
 ### Fixed
 - Folded autoplay no longer flashes the generic help footer, and `OK` now skips ahead to the next showdown or win step cleanly.
 - Folded autoplay now keeps its dedicated fast-forward affordance through bot turns without leaking the generic idle hint before results.
 - Live gameplay events no longer kick the player out of open menus before they choose to return to the table.
 - Canceling `Exit Hold 'em` no longer resurrects the old idle footer hint on the game board.
+- Showdown and fold-win resolution now refund uncalled excess chips before payout is computed, preventing bogus side pots and phantom split payouts in short-stack all-in spots.
+- Short all-in raises no longer reopen raising incorrectly for players who already acted, and the action footer now drops its bet-adjustment glyph when only call/fold is legal.
+- Shared centering and glyph-placement math is now centralized instead of being reimplemented screen by screen, reducing future UI drift.
 
 ## Planned
 

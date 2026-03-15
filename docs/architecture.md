@@ -4,10 +4,24 @@ This document describes how the Hold 'em app is organized so contributors can ex
 
 ## Runtime Model
 
-- Single-threaded event loop in `holdem.c`
+- Single-threaded event loop rooted in `holdem.c`
 - Rendering and input share one app state (`HoldemApp`)
 - Game state (`HoldemGame`) is pure data and updated by deterministic game functions
 - Save/load operates on full game state snapshots so interrupted sessions resume without reconstructing hidden cards or board state
+
+## Code Layout
+
+- `holdem.c`: app bootstrap, lifecycle, and top-level loop
+- `holdem_ui_common.c`: shared glyphs, centering helpers, and common display-state helpers
+- `holdem_ui_render.c`: all draw code and table/menu/result rendering
+- `holdem_ui_flow.c`: input routing, staged editor commits, startup flow, and back-button behavior
+- `holdem_gameplay.c`: interstitial/result flow plus betting-round and hand orchestration
+- `holdem_engine.c`: chip movement, dealing, payout resolution, and showdown helpers
+- `holdem_ai.c`: bot decision heuristics
+- `holdem_eval.c`: hand scoring and card formatting
+- `holdem_storage.c`: save/load and legacy migration
+
+This split is intentional. The project now treats contributor readability as a feature and aims to keep source files under roughly 1000 lines wherever practical.
 
 ## UI Modes
 
@@ -18,7 +32,7 @@ This document describes how the Hold 'em app is organized so contributors can ex
 - `UiModeHelp`: Multi-page help
 - `UiModeBlindEdit`: Blind editing sub-menu
 - `UiModeBotCountEdit`: Bot count editor
-- `UiModeRestartConfirm`: Confirm restart after bot-count change
+- `UiModeNewGameConfirm`: Shared new-game confirmation screen used by both the game menu and bot-count changes that require a fresh table
 - `UiModeExitPrompt`: Exit/save prompt
 - `UiModeStartChoice`: Startup load/new choice
 - `UiModeStartReady`: Clean startup state waiting at the explicit start gate
@@ -43,11 +57,14 @@ Payout is intentionally split into two phases:
 - Commit phase (`apply_payout`) mutates stacks/pot after result confirmation
 
 This keeps the inspect/result UX consistent and avoids premature stack updates.
+Before either payout path resolves winners, unmatched top contributions are refunded so uncalled excess chips do not leak into bogus side pots.
+When a hand pays multiple players, the current result screen intentionally shows one representative payout recipient plus a `[Split Pot]` cue until richer split-pot detail work lands.
 
 ## Save/Load
 
 - Single save slot: `/ext/apps_data/holdem/save.bin`
 - Save contains the full `HoldemGame` state plus persisted gameplay settings such as bot difficulty and progressive-blind configuration
+- Persisted settings currently include table size (`player_count`), live blind values, bot difficulty, and the full progressive-blind schedule state
 - Starting a new game from startup choice clears prior save
 - Legacy save migration is handled in `holdem_storage.c` and should stay conservative
 - Progressive blind scheduling persists via the next scheduled raise hand number, so a loaded save can trigger the next blind increase at the correct future hand boundary
@@ -63,16 +80,20 @@ This keeps the inspect/result UX consistent and avoids premature stack updates.
 ## Current Branch Focus
 
 - Five total players are now supported, with one human and up to four bots
-- The denser table layout depends on footer compaction and tighter menu spacing in `holdem.c`
+- The denser table layout depends on footer compaction and tighter menu spacing across the split UI modules
 - Player rows on the main table now use fixed visual columns for names, role/status markers, stack text, and hidden-card placeholders
 - Folded pre-showdown bot rows keep their `XX XX` placeholders and add a narrow strike cue across the pair so fold state reads faster without exposing cards
 - Inline bitmap glyphs now carry part of the UI language for confirm, back, navigation, left/right actions, and folded-autoplay fast-forward
 - The board row now stands without a `Table:` label and centers the visible community cards as a unit
 - Bot-count and difficulty settings are treated as persistent gameplay settings and survive save/load plus new-game resets
 - Blind editing now has an optional progressive mode that stays disabled by default and advances blinds only between hands
+- Blind and bot editors now use staged values with conditional save prompts so temporary menu edits do not imply an immediate commit
+- Bot-count changes now reuse the shared `Start new game?` confirmation screen so the user sees one consistent restart flow
 - When a progressive increase is due, the app shows a short non-animated blind-level notification before the next `Hand Start` beat
 - Every newly dealt hand shows a short `Hand Start` beat after fresh cards are in place so the visible table state is stable before action starts
 - Foreground gameplay prompts are queued behind open menus so live turns and results do not steal focus from active menu screens
+- Elimination state is now treated separately from temporary zero-chip all-in state so busted markers and busted-row cues only appear once a player is truly out of the game
+- Betting rounds now distinguish full raises from short all-in raises so action is not reopened illegally after a partial all-in bump
 
 ## Extension Guidance
 
@@ -82,3 +103,4 @@ This keeps the inspect/result UX consistent and avoids premature stack updates.
 - Keep display ordering separate from gameplay seat ordering
 - Add new gameplay features by extending data first, then render/input paths
 - Add comments around state transitions when behavior depends on ordering
+- Keep shared UI math in common helpers instead of duplicating centering or glyph-placement logic screen by screen

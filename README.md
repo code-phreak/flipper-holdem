@@ -2,7 +2,7 @@
 
 Native single-player Texas Hold'em built specifically for Flipper Zero.
 
-Play a full table of compact, readable Hold 'em against up to four bots with real betting rounds, side-pot-aware showdowns, trustworthy save/load, and a UI tuned for the actual device screen. The current branch is focused on carrying that polished v1.0 foundation into a denser, smarter v1.1 table.
+Play a full table of compact, readable Hold 'em against up to four bots with real betting rounds, side-pot-aware showdowns, trustworthy save/load, and a UI tuned for the actual device screen. The current branch is focused on carrying that polished v1.0 foundation into a denser, smarter v1.1 table while keeping the codebase friendly to human contributors.
 
 The latest in-progress source lives on active feature branches on GitHub before it is folded back into `main`.
 
@@ -50,6 +50,8 @@ The current release on-device flow at a glance:
 - Full Texas Hold'em hand flow on-device, from preflop through showdown
 - Play heads-up or expand the table up to five total players with 1 to 4 bots
 - Side-pot-aware payouts and showdown resolution for real multi-way hands
+- Uncalled excess chips are refunded before payout resolution so short-stack all-ins do not create bogus side pots
+- Split-pot results now surface a representative winner and explicit split-pot callout instead of implying every paid hand has a single sole winner
 - Fast, readable table UI built for the actual Flipper screen, not just emulator screenshots
 - Compact bitmap suit icons and clear card summaries that stay legible during play
 - Folded pre-showdown bot rows keep their hidden `XX XX` placeholders with a compact strike cue for faster state scanning
@@ -59,6 +61,7 @@ The current release on-device flow at a glance:
 - Bot heuristics factor in betting pressure and stack commitment so weak hands are less likely to wander into suspicious all-ins
 - Bot-count and difficulty settings are preserved across restart, save/load, and new-game flow
 - Optional progressive blinds can be enabled from the blind editor, stay off by default, and only advance at safe hand boundaries
+- Blind and bot settings menus now use staged edits with save prompts that appear only when something actually changed
 - Progressive blind increases surface a short centered level-up notice before the next hand begins when the saved schedule says one is due
 - Every fresh hand now gets a short `Hand Start` beat after cards are dealt so the table state is readable before action begins
 - In-game blind editing, bot-count configuration, controls help, and a confirmation-backed new-game reset
@@ -155,20 +158,28 @@ The app is intended for official firmware and compatible forks, including Moment
 
 ## Repository Layout
 
-- `holdem.c`: app orchestration, rendering, and input/state handling
+- `holdem.c`: top-level app bootstrap, lifecycle, and main loop orchestration
 - `holdem_engine.c/.h`: gameplay flow, pot handling, and showdown logic
 - `holdem_ai.c/.h`: bot decision logic
 - `holdem_eval.c/.h`: hand evaluation and card formatting helpers
 - `holdem_storage.c/.h`: save/load management
+- `holdem_app_internal.h`: shared internal interfaces for the split UI/controller modules
+- `holdem_ui_common.c`: shared glyphs, centering helpers, and app-state display helpers
+- `holdem_ui_render.c`: all screen rendering and table-layout code
+- `holdem_ui_flow.c`: menu/input flow, edit-state commits, startup, and back-button handling
+- `holdem_gameplay.c`: result/interstitial flow and betting-round plus hand orchestration
 - `holdem_types.h`: shared types and constants
 - `application.fam`: app metadata
 - `holdem.png`: app icon
 - `docs/architecture.md`: architecture and extension notes
 - `docs/roadmap.md`: release follow-up and deferred work
 - `docs/changelog.md`: release history and pending changes
+- `docs/pre-release-tests.md`: high-risk validation checklist for payout, showdown, and rules edge cases
 - `docs/screenshots/`: padded screenshots for GitHub README presentation
 - `.catalog/`: Flipper catalog submission description, changelog, and raw screenshot assets
 - `CONTRIBUTING.md`: contributor workflow
+
+The project now keeps the large UI/controller logic split into purpose-specific files, with a working target of keeping source files comfortably under 1000 lines wherever practical.
 
 ## Release Notes Discipline
 

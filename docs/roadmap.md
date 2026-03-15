@@ -12,7 +12,7 @@ This roadmap tracks the next planned work beyond the shipped v1.0 baseline of Ho
 
 ## Branch Status
 
-The public v1.0 release is stable. Current branch work is focused on the next release, including larger table support, UI tightening, and future-facing AI improvements.
+The public v1.0 release is stable. Current branch work is focused on the next release, including larger table support, UI tightening, future-facing AI improvements, and keeping the codebase modular enough for human contributors to extend safely.
 
 ## Next Release Candidates
 
@@ -33,6 +33,15 @@ The public v1.0 release is stable. Current branch work is focused on the next re
   - Apply increases only at hand boundaries.
   - Show a short blind-level notification before the next hand when an increase is due.
   - Preserve save/load correctness with an active structure.
+
+### F-013 Pre-Release Payout and Rules Validation
+- Status: In Progress
+- Summary: Run the high-risk showdown, side-pot, elimination, and short-all-in rules tests before the next public release.
+- Current scope:
+  - Verify uncalled excess chips are refunded before payout.
+  - Verify genuine side pots resolve correctly across 2 to 5 active players.
+  - Verify winner markers and result summaries stay truthful when multiple payouts exist.
+  - Verify short all-in raises do not reopen action incorrectly.
 
 ### F-010 Cursor-Based Menu Navigation
 - Status: Planned
@@ -58,6 +67,15 @@ The public v1.0 release is stable. Current branch work is focused on the next re
   - Preserve the current default pacing as the recommended baseline.
   - Allow fast autoplay without removing the ability to read betting flow.
   - Keep the setting persistent across save/load and new-game flow if it becomes user-facing.
+
+### F-014 Descriptive Split-Pot Result Details
+- Status: Planned
+- Summary: Expand result screens so real split-pot hands explain who won which share instead of collapsing to a single representative winner.
+- Future requirements:
+  - Distinguish simple ties from true side-pot splits.
+  - Show multiple payout recipients without overwhelming the 128x64 layout.
+  - Keep showdown `*` markers and result-screen wording consistent with the actual payout map.
+  - Preserve a compact fallback when the split details are too dense for one screen.
 
 ### F-003 Configurable Bot Difficulty
 - Status: Done
@@ -114,3 +132,4 @@ The public v1.0 release is stable. Current branch work is focused on the next re
 - Keep this file concise and implementation-focused.
 - Add new post-v1 items only when they are meaningfully defined.
 - Revisit deferred items as the next release scope becomes clear.
+- Use [docs/pre-release-tests.md](pre-release-tests.md) to track concrete release-blocking validation work.

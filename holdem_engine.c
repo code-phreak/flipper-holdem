@@ -99,6 +99,40 @@ Card pop_card(HoldemGame* game) {
     return next_card;
 }
 
+static void refund_uncalled_excess(HoldemGame* game) {
+    int highest_contrib_index = -1;
+    int32_t highest_contrib = 0;
+    int32_t second_highest_contrib = 0;
+    bool highest_is_tied = false;
+
+    for(size_t player_index = 0; player_index < game->player_count; player_index++) {
+        int32_t contribution = game->players[player_index].hand_contrib;
+        if(contribution > highest_contrib) {
+            second_highest_contrib = highest_contrib;
+            highest_contrib = contribution;
+            highest_contrib_index = (int)player_index;
+            highest_is_tied = false;
+        } else if(contribution == highest_contrib && contribution > 0) {
+            highest_is_tied = true;
+        } else if(contribution > second_highest_contrib) {
+            second_highest_contrib = contribution;
+        }
+    }
+
+    if(highest_contrib_index < 0 || highest_is_tied || highest_contrib <= second_highest_contrib) return;
+
+    int32_t uncalled_excess = highest_contrib - second_highest_contrib;
+    Player* player = &game->players[highest_contrib_index];
+    player->stack += uncalled_excess;
+    player->hand_contrib -= uncalled_excess;
+    if(player->street_bet >= uncalled_excess) {
+        player->street_bet -= uncalled_excess;
+    } else {
+        player->street_bet = 0;
+    }
+    game->pot -= uncalled_excess;
+}
+
 void reset_hand(HoldemGame* game) {
     // Hand reset preserves long-lived table state like stacks, button position, and blind size,
     // but wipes every per-hand field so the next deal starts from a clean slate.
@@ -151,6 +185,8 @@ bool resolve_fold_win(HoldemGame* game, PayoutResult* payout_result) {
     int winner_index = -1;
     size_t active_players = 0;
 
+    refund_uncalled_excess(game);
+
     for(size_t player_index = 0; player_index < game->player_count; player_index++) {
         if(game->players[player_index].in_hand) {
             active_players++;
@@ -172,6 +208,7 @@ bool resolve_fold_win(HoldemGame* game, PayoutResult* payout_result) {
 
 void resolve_showdown(HoldemGame* game, PayoutResult* payout_result) {
     memset(payout_result, 0, sizeof(*payout_result));
+    refund_uncalled_excess(game);
 
     // Build sorted unique contribution levels used to distribute side pots.
     int32_t contribution_levels[HOLDEM_MAX_PLAYERS];
