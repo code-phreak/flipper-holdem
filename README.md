@@ -67,10 +67,6 @@ On-device flow at a glance:
 - Four bot difficulty levels: Easy, Medium, Hard, and Extreme
 - Blind editor with optional progressive blinds
 - Save/load for full game state and table settings
-- Compact screen-first interface with bitmap suit and control glyphs
-- Clear showdown, result, and interstitial screens built for real hardware
-- In-game controls help, bot editor, and confirmation-backed new-game flow
-- Fast, readable pacing that keeps every betting round easy to follow
 
 ## Build
 
