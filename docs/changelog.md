@@ -44,6 +44,7 @@ This changelog follows a lightweight Keep a Changelog style.
 - Bot-count changes that require a fresh table now reuse the shared `Start new game?` confirmation screen instead of a separate restart-only prompt.
 
 ### Fixed
+- Fresh-table resets triggered from bot-count changes now stay behind the explicit start gate until a real hand is dealt, preventing transient undealt table states with zero pots, duplicate placeholder cards, or folded bot rows.
 - Folded autoplay no longer flashes the generic help footer, and `OK` now skips ahead to the next showdown or win step cleanly.
 - Folded autoplay now keeps its dedicated fast-forward affordance through bot turns without leaking the generic idle hint before results.
 - Live gameplay events no longer kick the player out of open menus before they choose to return to the table.

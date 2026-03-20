@@ -541,6 +541,7 @@ bool play_one_hand(HoldemApp* app, PayoutResult* payout) {
     if(!post_blinds(g)) return false;
     deal_hole(g);
     g->hand_in_progress = true;
+    holdem_set_foreground_mode(app, UiModeTable);
     show_timed_table_message(app, "Hand Start");
     if(app->exit_requested || app->reset_requested) return !app->exit_requested;
 

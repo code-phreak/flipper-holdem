@@ -200,6 +200,7 @@ typedef struct {
     uint8_t blind_edit_progressive_period_hands;
     int32_t blind_edit_progressive_step_sb;
     uint8_t help_page;
+    bool start_requested;
 } HoldemApp;
 
 typedef struct {

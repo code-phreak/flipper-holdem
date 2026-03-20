@@ -127,7 +127,15 @@ void reset_to_new_game(HoldemApp* app) {
     app->bot_turn_active = false;
     app->bot_turn_idx = -1;
     app->bot_turn_text[0] = '\0';
+    app->acting_idx = -1;
+    app->action_ready = false;
+    app->prompt_to_call = 0;
+    app->prompt_min_raise = 0;
+    app->prompt_raise_by = 0;
+    app->prompt_bet_total = 0;
+    app->chosen_raise_by = 0;
     app->skip_autoplay_requested = false;
+    app->start_requested = false;
     app->pending_small_blind = app->configured_small_blind;
     app->blind_edit_sb = app->configured_small_blind;
     app->blind_edit_initial_sb = app->configured_small_blind;
@@ -352,8 +360,7 @@ bool process_global_event(HoldemApp* app, const InputEvent* ev) {
 
     if(app->mode == UiModeStartReady) {
         if(ev->key == InputKeyOk) {
-            app->mode = UiModeTable;
-            view_port_update(app->view_port);
+            app->start_requested = true;
             return true;
         }
         return true;
@@ -597,10 +604,15 @@ bool wait_for_start_confirmation(HoldemApp* app) {
     flush_input_queue(app);
 
     InputEvent ev;
-    while(app->running && app->mode == UiModeStartReady) {
+    while(app->running && app->mode == UiModeStartReady && !app->start_requested) {
         if(furi_message_queue_get(app->input_queue, &ev, FuriWaitForever) != FuriStatusOk) continue;
         (void)process_global_event(app, &ev);
         if(app->exit_requested) return false;
+    }
+
+    if(app->start_requested) {
+        app->start_requested = false;
+        return true;
     }
 
     return app->running && !app->exit_requested;
