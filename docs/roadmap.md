@@ -1,135 +1,60 @@
 # Roadmap
 
-This roadmap tracks the next planned work beyond the shipped v1.0 baseline of Hold 'em.
+This roadmap tracks the remaining work between the current branch and the next public release.
 
-## Status Key
+## Release 1.1 Finalization
 
-- Planned: agreed direction, not started
-- In Progress: actively implemented
-- Blocked: waiting on dependency, design decision, or validation
-- Deferred: intentionally out of the current release scope
-- Done: shipped and verified
+### R-001 Full Pre-Release Test Pass
+- Status: In Progress
+- Summary: Run the full device-focused validation pass before shipping v1.1.
+- Scope:
+  - Work through [docs/pre-release-tests.md](pre-release-tests.md) end to end.
+  - Re-check payout integrity, short-all-in rules, split-pot presentation, and money-glyph spacing.
+  - Confirm the final menu, interstitial, startup, and result flows on real hardware.
 
-## Branch Status
+### R-002 Screenshot Refresh
+- Status: Planned
+- Summary: Replace the current README and release-facing screenshots with captures from the final v1.1 UI.
+- Scope:
+  - Capture the final startup, main table, controls, settings, showdown, result, and win/loss states.
+  - Keep the GitHub gallery aligned with the actual release build.
+  - Reuse the existing padded README presentation workflow after the final raw captures are approved.
 
-The public v1.0 release is stable. Current branch work is focused on the next release, including larger table support, UI tightening, future-facing AI improvements, and keeping the codebase modular enough for human contributors to extend safely.
+## Post-1.1 Ideas
 
-## Next Release Candidates
+### F-010 Cursor-Based Menu Navigation
+- Status: Deferred
+- Summary: Update dense settings menus to use a highlighted row with inline `L/R` controls.
+
+### F-012 Configurable Bot Pause Length
+- Status: Deferred
+- Summary: Let players choose how long bot action messages pause between decisions.
+
+### F-014 Descriptive Split-Pot Result Details
+- Status: Deferred
+- Summary: Expand split-pot result screens so they explain who won which share.
 
 ### F-001 Lifetime Hands Completed Counter
 - Status: Deferred
-- Summary: Track total completed hands for the currently installed app instance after the current release.
-- Future requirements:
-  - Counter persists across app restarts.
-  - Counter increments only when a hand reaches a completed result state.
-  - Save format/versioning must allow future extension without data loss.
-  - Behavior for save deletion, reinstall, and firmware migration must be documented.
-
-### F-002 Configurable Progressive Blinds
-- Status: In Progress
-- Summary: Optional progressive blind structures are now wired into the blind editor and save state, with final on-device validation still pending.
-- Current scope:
-  - Keep the feature off by default.
-  - Apply increases only at hand boundaries.
-  - Show a short blind-level notification before the next hand when an increase is due.
-  - Preserve save/load correctness with an active structure.
-
-### F-013 Pre-Release Payout and Rules Validation
-- Status: In Progress
-- Summary: Run the high-risk showdown, side-pot, elimination, and short-all-in rules tests before the next public release.
-- Current scope:
-  - Verify uncalled excess chips are refunded before payout.
-  - Verify genuine side pots resolve correctly across 2 to 5 active players.
-  - Verify winner markers and result summaries stay truthful when multiple payouts exist.
-  - Verify short all-in raises do not reopen action incorrectly.
-
-### F-010 Cursor-Based Menu Navigation
-- Status: Planned
-- Summary: Update dense settings menus to use a highlighted row with inline `L/R` increment and decrement controls.
-- Future requirements:
-  - Preserve the current compact three-button mental model on the Flipper screen.
-  - Keep edit state readable without crowding rows with too much instructional text.
-  - Reconcile the new icon-led control language with row selection so prompts stay terse.
-  - Reuse the interaction pattern across bot, blind, and future settings menus.
-
-### F-011 Screenshot Refresh Before Next Release
-- Status: Planned
-- Summary: Refresh README and release-facing screenshots once the current v1.1 UI work stabilizes.
-- Future requirements:
-  - Replace stale captures that still reflect the older four-seat layout and earlier menu wording.
-  - Keep the GitHub gallery and future release assets aligned with the actual shipped UI.
-  - Reuse the existing padded README presentation workflow after the final raw captures are approved.
-
-### F-012 Configurable Bot Pause Length
-- Status: Planned
-- Summary: Let players choose how long bot action messages pause between decisions.
-- Future requirements:
-  - Preserve the current default pacing as the recommended baseline.
-  - Allow fast autoplay without removing the ability to read betting flow.
-  - Keep the setting persistent across save/load and new-game flow if it becomes user-facing.
-
-### F-014 Descriptive Split-Pot Result Details
-- Status: Planned
-- Summary: Expand result screens so real split-pot hands explain who won which share instead of collapsing to a single representative winner.
-- Future requirements:
-  - Distinguish simple ties from true side-pot splits.
-  - Show multiple payout recipients without overwhelming the 128x64 layout.
-  - Keep showdown `*` markers and result-screen wording consistent with the actual payout map.
-  - Preserve a compact fallback when the split details are too dense for one screen.
-
-### F-003 Configurable Bot Difficulty
-- Status: Done
-- Summary: Added player-facing bot difficulty settings on top of the shipped v1.0 baseline.
-- Future requirements:
-  - Preserve the current default balance as the initial setting.
-  - Persist the chosen difficulty in save/config state.
-  - Keep the AI path extensible for richer future behavior.
-
-### F-009 Fifth-Seat Table Expansion
-- Status: Done
-- Summary: Expanded the live table from four total players to five total players with a fourth bot and tightened table/menu layout.
-- Current scope:
-  - Preserve row readability on the 128x64 display.
-  - Keep footer, result, and help flows readable with the denser table.
-  - Mark folded pre-showdown bot rows with a lightweight cue on the `XX XX` placeholders without exposing cards or cluttering the full row.
-  - Maintain save/load correctness and bot-count restart behavior.
+- Summary: Track total completed hands for the currently installed app instance.
 
 ### F-004 Winner Celebration Polish
 - Status: Deferred
-- Summary: Expand the winner presentation after the current release with audio, LED effects, and richer animation treatment.
-- Future requirements:
-  - Add an optional winner tune.
-  - Add celebratory LED behavior.
-  - Expand the current fireworks treatment without blocking core flow excessively.
+- Summary: Expand winner presentation with richer audio, LED, or animation treatment.
 
 ### F-005 Game Over Polish
 - Status: Deferred
-- Summary: Expand the game-over presentation after the current release with audio, LED effects, and richer animation treatment.
-- Future requirements:
-  - Add an optional game-over tune distinct from the winner tune.
-  - Add a subdued LED pattern for losses.
-  - Expand the current game-over presentation without obscuring restart flow.
+- Summary: Expand the loss presentation with richer audio, LED, or animation treatment.
 
 ### F-007 New Startup Art
 - Status: Deferred
 - Summary: Replace or expand the current startup art with a more distinctive title-screen presentation.
-- Future requirements:
-  - Preserve legibility on the 128x64 display.
-  - Keep startup flow fast and input-safe.
-  - Revalidate spacing around prompt text and title lockup on device.
 
 ### F-008 Sub-GHz Multiplayer Investigation
 - Status: Deferred
 - Summary: Evaluate whether synchronous multiplayer across multiple Flipper devices is feasible and worth pursuing.
-- Future requirements:
-  - Define a connection model that is reliable within Flipper hardware and regional radio constraints.
-  - Determine how to synchronize shuffles, betting actions, and reconnect behavior without trust issues.
-  - Confirm whether latency, packet loss, and user setup burden are acceptable for Texas Hold'em pacing.
-  - Keep the investigation separate from the single-device core game until feasibility is proven.
 
 ## Notes
 
-- Keep this file concise and implementation-focused.
-- Add new post-v1 items only when they are meaningfully defined.
-- Revisit deferred items as the next release scope becomes clear.
-- Use [docs/pre-release-tests.md](pre-release-tests.md) to track concrete release-blocking validation work.
+- Release-blocking validation lives in [docs/pre-release-tests.md](pre-release-tests.md).
+- New feature work beyond v1.1 should stay out of the release branch until the final test pass and screenshot refresh are complete.

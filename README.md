@@ -2,9 +2,7 @@
 
 Native single-player Texas Hold'em built specifically for Flipper Zero.
 
-Play a full table of compact, readable Hold 'em against up to four bots with real betting rounds, side-pot-aware showdowns, trustworthy save/load, and a UI tuned for the actual device screen. The current branch is focused on carrying that polished v1.0 foundation into a denser, smarter v1.1 table while keeping the codebase friendly to human contributors.
-
-The latest in-progress source lives on active feature branches on GitHub before it is folded back into `main`.
+Play a full table of compact, readable Hold 'em against up to four bots with real betting rounds, side-pot-aware showdowns, reliable save/load, and a UI tuned for the actual device screen.
 
 ## Screenshots
 
@@ -51,6 +49,7 @@ The current release on-device flow at a glance:
 - Play heads-up or expand the table up to five total players with 1 to 4 bots
 - Side-pot-aware payouts and showdown resolution for real multi-way hands
 - Uncalled excess chips are refunded before payout resolution so short-stack all-ins do not create bogus side pots
+- Uncalled excess is now also normalized before later streets and showdown when a hand continues, so visible pot and stack numbers stay truthful after short all-ins from the blinds or later streets
 - Split-pot results now surface a representative winner and explicit split-pot callout instead of implying every paid hand has a single sole winner
 - Fast, readable table UI built for the actual Flipper screen, not just emulator screenshots
 - Compact bitmap suit icons and clear card summaries that stay legible during play
@@ -59,10 +58,13 @@ The current release on-device flow at a glance:
 - Human-friendly bot pacing with visible action text so each betting round is easy to follow
 - Four bot difficulty tiers: Easy, Medium, Hard, and Extreme
 - Bot heuristics factor in betting pressure and stack commitment so weak hands are less likely to wander into suspicious all-ins
+- Heads-up Easy and Medium bots now defend oversized preflop and flop pressure more credibly, so the same bully sizing does not collapse the table every hand
+- Bot raise sizing now snaps to the table's small-blind increment so human and AI betting stay on the same visible chip grid
 - Bot-count and difficulty settings are preserved across restart, save/load, and new-game flow
 - Optional progressive blinds can be enabled from the blind editor, stay off by default, and only advance at safe hand boundaries
 - Blind and bot settings menus now use staged edits with save prompts that appear only when something actually changed
 - Progressive blind increases surface a short centered level-up notice before the next hand begins when the saved schedule says one is due
+- Custom non-progressive blinds now behave like persistent table settings and carry across user-initiated fresh games, win/loss resets, and save/load
 - Every fresh hand now gets a short `Hand Start` beat after cards are dealt so the table state is readable before action begins
 - In-game blind editing, bot-count configuration, controls help, and a confirmation-backed new-game reset
 - Single-slot save/load that preserves the full game state for trustworthy resume behavior
@@ -95,6 +97,7 @@ Build output:
 - `OK`: Commit the current action (`Check`, `Call`, or `Raise`)
 - `Up/Down`: Increase or decrease the current bet amount
 - `Right`: Reset the current bet amount to the default call/check value
+- `Hold Right`: Set the current bet to all in
 - After folding, `OK` can fast-forward through the remaining autoplayed bot action
 
 ### Global
@@ -115,11 +118,13 @@ Save path:
 
 Startup behavior when a save exists:
 - `OK`: Load save
-- `Back`: Start a new game and delete the previous save
+- `Back`: Start a new game without loading the previous save
 
 There is only one save slot by design.
-Gameplay settings such as bot difficulty and progressive blinds are included in the saved state.
+Starting or playing a fresh unsaved game no longer deletes the existing save until a later save overwrites it.
+Gameplay settings such as bot difficulty, fixed blind configuration, and progressive blinds are included in the saved state.
 Saved progressive-blind timing state is also preserved so future increases still trigger on the correct hand after load.
+If progressive blinds are active, the underlying base `SB/BB` used for future fresh games is saved separately from the current in-hand blind level.
 
 ## Fairness and RNG
 
@@ -178,8 +183,6 @@ The app is intended for official firmware and compatible forks, including Moment
 - `docs/screenshots/`: padded screenshots for GitHub README presentation
 - `.catalog/`: Flipper catalog submission description, changelog, and raw screenshot assets
 - `CONTRIBUTING.md`: contributor workflow
-
-The project now keeps the large UI/controller logic split into purpose-specific files, with a working target of keeping source files comfortably under 1000 lines wherever practical.
 
 ## Release Notes Discipline
 

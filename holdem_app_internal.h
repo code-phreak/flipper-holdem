@@ -23,6 +23,9 @@ void holdem_draw_line(Canvas* canvas, uint8_t y, const char* text);
 void holdem_draw_line_right(Canvas* canvas, uint8_t y, const char* text);
 void holdem_draw_back_icon(Canvas* canvas, uint8_t x, uint8_t baseline_y);
 void holdem_draw_ok_icon(Canvas* canvas, uint8_t x, uint8_t baseline_y);
+void holdem_draw_chip_icon(Canvas* canvas, uint8_t x, uint8_t baseline_y);
+uint8_t holdem_display_text_width(Canvas* canvas, const char* text);
+void holdem_draw_display_text(Canvas* canvas, uint8_t x, uint8_t baseline_y, const char* text);
 uint8_t holdem_centered_x_for_width(uint8_t width);
 void holdem_draw_text_centered(Canvas* canvas, uint8_t baseline_y, const char* text);
 void holdem_draw_centered_inline_lr_text(
@@ -132,7 +135,8 @@ bool show_interstitial_screen(
     const char* text,
     bool fireworks,
     uint32_t duration_ms,
-    bool allow_back_skip);
+    bool allow_back_skip,
+    bool show_continue_hint);
 bool show_big_win_screen(HoldemApp* app);
 bool show_progressive_blinds_screen(HoldemApp* app);
 void show_hand_result_screen(HoldemApp* app, const PayoutResult* payout);

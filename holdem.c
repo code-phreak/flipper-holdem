@@ -8,12 +8,13 @@ int32_t holdem_main(void* p) {
     memset(app, 0, sizeof(HoldemApp));
 
     init_game(&app->game);
+    app->configured_small_blind = app->game.small_blind;
     app->configured_player_count = app->game.player_count;
     app->bot_count_edit_value = app->configured_player_count;
     app->pending_blinds_dirty = false;
-    app->pending_small_blind = app->game.small_blind;
-    app->blind_edit_sb = app->game.small_blind;
-    app->blind_edit_initial_sb = app->game.small_blind;
+    app->pending_small_blind = app->configured_small_blind;
+    app->blind_edit_sb = app->configured_small_blind;
+    app->blind_edit_initial_sb = app->configured_small_blind;
     app->progressive_blinds_enabled = false;
     app->progressive_period_hands = HOLDEM_PROGRESSIVE_DEFAULT_PERIOD_HANDS;
     app->progressive_step_sb = HOLDEM_PROGRESSIVE_DEFAULT_STEP_SB;
@@ -43,10 +44,12 @@ int32_t holdem_main(void* p) {
     startup_choose_load_or_new(app);
     app->configured_ai_level_pct = app->ai_level_pct;
     app->bot_difficulty_edit_value = app->configured_ai_level_pct;
-    app->pending_blinds_dirty = false;
-    app->pending_small_blind = app->game.small_blind;
-    app->blind_edit_sb = app->game.small_blind;
-    app->blind_edit_initial_sb = app->game.small_blind;
+    app->pending_blinds_dirty =
+        !app->progressive_blinds_enabled && (app->configured_small_blind != app->game.small_blind);
+    app->pending_small_blind =
+        app->pending_blinds_dirty ? app->configured_small_blind : app->game.small_blind;
+    app->blind_edit_sb = app->configured_small_blind;
+    app->blind_edit_initial_sb = app->configured_small_blind;
     app->blind_edit_progressive_enabled = app->progressive_blinds_enabled;
     app->blind_edit_progressive_period_hands = app->progressive_period_hands;
     app->blind_edit_progressive_step_sb = app->progressive_step_sb;
@@ -74,7 +77,7 @@ int32_t holdem_main(void* p) {
         int champ = champion_idx(&app->game);
         bool you_busted = (app->game.players[0].stack <= 0);
         if(you_busted) {
-            if(!show_interstitial_screen(app, "Game Over", false, 0u, true)) break;
+            if(!show_interstitial_screen(app, "Game Over", false, 0u, true, true)) break;
             if(app->exit_requested) break;
             reset_to_new_game(app);
             continue;
@@ -82,13 +85,13 @@ int32_t holdem_main(void* p) {
 
         if(champ >= 0) {
             if(champ == 0) {
-                if(!show_interstitial_screen(app, "You Won!", true, 0u, true)) break;
+                if(!show_interstitial_screen(app, "You Won!", true, 0u, true, false)) break;
                 if(app->exit_requested) break;
                 reset_to_new_game(app);
                 continue;
             }
 
-            if(!show_interstitial_screen(app, "Game Over", false, 0u, true)) break;
+            if(!show_interstitial_screen(app, "Game Over", false, 0u, true, true)) break;
             if(app->exit_requested) break;
             reset_to_new_game(app);
             continue;
@@ -99,6 +102,7 @@ int32_t holdem_main(void* p) {
         (void)save_progress(
             &app->game,
             app->configured_ai_level_pct,
+            app->configured_small_blind,
             app->progressive_blinds_enabled,
             app->progressive_period_hands,
             app->progressive_step_sb,

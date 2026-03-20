@@ -4,6 +4,10 @@
 
 #include <string.h>
 
+static int32_t holdem_storage_default_small_blind(void) {
+    return 10;
+}
+
 // Version 2 saves predate the fourth seat. We keep a local copy of the old layout so
 // migration code can stay explicit instead of relying on fragile size assumptions.
 typedef struct {
@@ -104,6 +108,7 @@ void delete_save_on_storage(void) {
 bool save_progress(
     const HoldemGame* game,
     uint8_t ai_level_pct,
+    int32_t configured_small_blind,
     bool progressive_blinds_enabled,
     uint8_t progressive_period_hands,
     int32_t progressive_step_sb,
@@ -124,9 +129,10 @@ bool save_progress(
         HoldemSave save;
         memset(&save, 0, sizeof(save));
         save.magic = HOLDEM_SAVE_MAGIC;
-        save.version = 6;
+        save.version = 7;
         save.game = *game;
         save.ai_level_pct = ai_level_pct;
+        save.configured_small_blind = configured_small_blind;
         save.progressive_blinds_enabled = progressive_blinds_enabled;
         save.progressive_period_hands = progressive_period_hands;
         save.progressive_step_sb = progressive_step_sb;
@@ -231,6 +237,7 @@ static bool load_legacy_v3_save(File* file, HoldemGame* game) {
 bool load_progress(
     HoldemGame* game,
     uint8_t* ai_level_pct,
+    int32_t* configured_small_blind,
     bool* progressive_blinds_enabled,
     uint8_t* progressive_period_hands,
     int32_t* progressive_step_sb,
@@ -246,6 +253,7 @@ bool load_progress(
 
     bool ok = false;
     if(ai_level_pct) *ai_level_pct = HOLDEM_AI_DEFAULT_LEVEL;
+    if(configured_small_blind) *configured_small_blind = holdem_storage_default_small_blind();
     if(progressive_blinds_enabled) *progressive_blinds_enabled = false;
     if(progressive_period_hands) *progressive_period_hands = HOLDEM_PROGRESSIVE_DEFAULT_PERIOD_HANDS;
     if(progressive_step_sb) *progressive_step_sb = HOLDEM_PROGRESSIVE_DEFAULT_STEP_SB;
@@ -255,7 +263,7 @@ bool load_progress(
         memset(&save, 0, sizeof(save));
         size_t read = storage_file_read(file, &save, sizeof(save));
 
-        if(read == sizeof(save) && save.magic == HOLDEM_SAVE_MAGIC && save.version == 6) {
+        if(read == sizeof(save) && save.magic == HOLDEM_SAVE_MAGIC && save.version == 7) {
             // Validate the persisted snapshot before trusting it. A corrupt save should fail closed.
             if(
                 save.game.player_count >= HOLDEM_MIN_PLAYERS &&
@@ -265,6 +273,29 @@ bool load_progress(
                 save.game.stage <= StageShowdown) {
                 *game = save.game;
                 if(ai_level_pct) *ai_level_pct = save.ai_level_pct;
+                if(configured_small_blind) *configured_small_blind = save.configured_small_blind;
+                if(progressive_blinds_enabled) {
+                    *progressive_blinds_enabled = save.progressive_blinds_enabled;
+                }
+                if(progressive_period_hands) *progressive_period_hands = save.progressive_period_hands;
+                if(progressive_step_sb) *progressive_step_sb = save.progressive_step_sb;
+                if(progressive_next_raise_hand_no) {
+                    *progressive_next_raise_hand_no = save.progressive_next_raise_hand_no;
+                }
+                ok = true;
+            }
+        } else if(
+            read >= offsetof(HoldemSave, configured_small_blind) &&
+            save.magic == HOLDEM_SAVE_MAGIC && save.version == 6) {
+            if(
+                save.game.player_count >= HOLDEM_MIN_PLAYERS &&
+                save.game.player_count <= HOLDEM_MAX_PLAYERS &&
+                save.game.deck_pos <= HOLDEM_DECK_SIZE &&
+                save.game.board_count <= HOLDEM_BOARD_MAX &&
+                save.game.stage <= StageShowdown) {
+                *game = save.game;
+                if(ai_level_pct) *ai_level_pct = save.ai_level_pct;
+                if(configured_small_blind) *configured_small_blind = save.game.small_blind;
                 if(progressive_blinds_enabled) {
                     *progressive_blinds_enabled = save.progressive_blinds_enabled;
                 }
@@ -284,6 +315,7 @@ bool load_progress(
                 save.game.stage <= StageShowdown) {
                 *game = save.game;
                 if(ai_level_pct) *ai_level_pct = save.ai_level_pct;
+                if(configured_small_blind) *configured_small_blind = save.game.small_blind;
                 ok = true;
             }
         } else if(read >= offsetof(HoldemSave, ai_level_pct) && save.magic == HOLDEM_SAVE_MAGIC && save.version == 4) {
@@ -295,13 +327,16 @@ bool load_progress(
                 save.game.stage <= StageShowdown) {
                 *game = save.game;
                 if(ai_level_pct) *ai_level_pct = HOLDEM_AI_DEFAULT_LEVEL;
+                if(configured_small_blind) *configured_small_blind = save.game.small_blind;
                 ok = true;
             }
         } else if(load_legacy_v3_save(file, game)) {
             if(ai_level_pct) *ai_level_pct = HOLDEM_AI_DEFAULT_LEVEL;
+            if(configured_small_blind) *configured_small_blind = game->small_blind;
             ok = true;
         } else if(load_legacy_v2_save(file, game)) {
             if(ai_level_pct) *ai_level_pct = HOLDEM_AI_DEFAULT_LEVEL;
+            if(configured_small_blind) *configured_small_blind = game->small_blind;
             ok = true;
         } else {
             storage_file_seek(file, 0, true);
@@ -323,6 +358,7 @@ bool load_progress(
                     if(legacy.bb > 0) game->big_blind = legacy.bb;
                     game->hand_in_progress = false;
                     if(ai_level_pct) *ai_level_pct = HOLDEM_AI_DEFAULT_LEVEL;
+                    if(configured_small_blind) *configured_small_blind = game->small_blind;
                     ok = true;
                 }
             }

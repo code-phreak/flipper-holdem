@@ -133,6 +133,12 @@ static void refund_uncalled_excess(HoldemGame* game) {
     game->pot -= uncalled_excess;
 }
 
+void normalize_contested_pot(HoldemGame* game) {
+    if(active_in_hand_count(game) > 1) {
+        refund_uncalled_excess(game);
+    }
+}
+
 void reset_hand(HoldemGame* game) {
     // Hand reset preserves long-lived table state like stacks, button position, and blind size,
     // but wipes every per-hand field so the next deal starts from a clean slate.
@@ -185,8 +191,6 @@ bool resolve_fold_win(HoldemGame* game, PayoutResult* payout_result) {
     int winner_index = -1;
     size_t active_players = 0;
 
-    refund_uncalled_excess(game);
-
     for(size_t player_index = 0; player_index < game->player_count; player_index++) {
         if(game->players[player_index].in_hand) {
             active_players++;
@@ -195,6 +199,12 @@ bool resolve_fold_win(HoldemGame* game, PayoutResult* payout_result) {
     }
 
     if(active_players == 1 && winner_index >= 0) {
+        bool is_preflop_big_blind_walk = (game->stage == StagePreflop) &&
+                                         (winner_index == game->bb_idx) &&
+                                         (game->pot == (game->small_blind + game->big_blind));
+        if(!is_preflop_big_blind_walk) {
+            refund_uncalled_excess(game);
+        }
         int32_t payout = game->pot;
         memset(payout_result, 0, sizeof(*payout_result));
         payout_result->idx[0] = winner_index;

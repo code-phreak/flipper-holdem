@@ -26,6 +26,47 @@ static bool is_extreme_ai(uint8_t ai_level_pct) {
     return ai_level_pct >= HOLDEM_AI_EXTREME_LEVEL;
 }
 
+static bool is_heads_up_pot(const HoldemGame* game) {
+    size_t contenders = 0;
+    for(size_t player_index = 0; player_index < game->player_count; player_index++) {
+        if(game->players[player_index].in_hand) contenders++;
+    }
+    return contenders == 2;
+}
+
+// Heads-up pots need a wider continuing range, especially against oversized single-raise pressure.
+// This keeps Easy/Medium from folding almost everything to the same repetitive bully sizing
+// without giving them unrealistic read-based knowledge.
+static int heads_up_defense_discount(
+    const HoldemGame* game,
+    const Player* player,
+    int32_t to_call,
+    int32_t current_bet,
+    uint8_t ai_level_pct) {
+    if(!is_heads_up_pot(game) || to_call <= 0 || current_bet <= 0 || player->stack <= 0) return 0;
+    if(game->stage != StagePreflop && game->stage != StageFlop) return 0;
+
+    int discount = (game->stage == StagePreflop) ? 6 : 4;
+    if(current_bet >= game->big_blind * 3) discount += 3;
+    if(current_bet >= game->big_blind * 5) discount += 3;
+    if(current_bet >= game->big_blind * 8) discount += 2;
+
+    int call_stack_percent = (int)((to_call * 100) / player->stack);
+    if(call_stack_percent <= 12) discount += 4;
+    else if(call_stack_percent <= 20) discount += 2;
+    else if(call_stack_percent >= 30) discount -= 3;
+
+    if(ai_level_pct <= HOLDEM_AI_EASY_LEVEL) {
+        discount = (discount * 9) / 10;
+    } else if(ai_level_pct <= HOLDEM_AI_MEDIUM_LEVEL) {
+        discount += 1;
+    } else if(ai_level_pct >= HOLDEM_AI_EXTREME_LEVEL) {
+        discount = (discount * 3) / 4;
+    }
+
+    return (int)clamp_i32(discount, 0, 18);
+}
+
 // Evaluate best 5-card score from any 5-of-N combination.
 static Score best_from_n(const Card* cards, size_t card_count) {
     Score best_score = {.v = {-1, -1, -1, -1, -1, -1}};
@@ -239,6 +280,7 @@ static int32_t choose_raise_by(
     int32_t to_call,
     int32_t min_raise,
     int strength) {
+    int32_t raise_step = (game->small_blind > 0) ? game->small_blind : HOLDEM_BLIND_STEP_SB;
     int pot_percent = 50;
     if(strength >= 78) pot_percent = 100;
     else if(strength >= 62) pot_percent = 75;
@@ -249,7 +291,15 @@ static int32_t choose_raise_by(
 
     int32_t raise_by = raise_from_pot;
     if(raise_by < min_raise) raise_by = min_raise;
-    if(raise_by > max_raise) raise_by = max_raise;
+    if(raise_by >= max_raise) return max_raise;
+
+    raise_by = ((raise_by + (raise_step / 2)) / raise_step) * raise_step;
+    if(raise_by < min_raise) raise_by = min_raise;
+    if(raise_by >= max_raise) {
+        int32_t stepped_max = (max_raise / raise_step) * raise_step;
+        if(stepped_max >= min_raise) raise_by = stepped_max;
+        else raise_by = max_raise;
+    }
     return raise_by;
 }
 
@@ -335,6 +385,8 @@ void bot_action(
     int required_strength = pot_odds_percent + (12 - ((int)app->ai_level_pct / 8));
     required_strength += pressure_score;
     if(extreme_ai) required_strength += pressure_score / 2;
+    required_strength -= heads_up_defense_discount(
+        game, player, to_call, current_bet, app->ai_level_pct);
     if(required_strength < 4) required_strength = 4;
 
     if(

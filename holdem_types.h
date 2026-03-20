@@ -24,6 +24,7 @@
 #define HOLDEM_SAVE_DIR "/ext/apps_data/holdem"
 #define HOLDEM_SAVE_MAGIC 0x48444D31u
 #define HOLDEM_BACK_HOLD_MS 1500u
+#define HOLDEM_RIGHT_HOLD_MS 1000u
 #define HOLDEM_AI_EASY_LEVEL 20u
 #define HOLDEM_AI_MEDIUM_LEVEL 50u
 #define HOLDEM_AI_HARD_LEVEL 80u
@@ -123,6 +124,7 @@ typedef struct {
     uint8_t progressive_period_hands;
     int32_t progressive_step_sb;
     int32_t progressive_next_raise_hand_no;
+    int32_t configured_small_blind;
 } HoldemSave;
 
 typedef struct {
@@ -164,6 +166,7 @@ typedef struct {
     size_t pause_card_count;
     char interstitial_text[40];
     bool interstitial_fireworks;
+    bool interstitial_show_continue_hint;
     bool exit_requested;
     bool save_on_exit;
     bool back_down;
@@ -181,6 +184,7 @@ typedef struct {
     uint8_t showdown_winner_mask;
     int32_t blind_edit_sb;
     int32_t blind_edit_initial_sb;
+    int32_t configured_small_blind;
     size_t configured_player_count;
     size_t bot_count_edit_value;
     uint8_t configured_ai_level_pct;

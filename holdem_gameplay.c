@@ -40,10 +40,12 @@ bool show_interstitial_screen(
     const char* text,
     bool fireworks,
     uint32_t duration_ms,
-    bool allow_back_skip) {
+    bool allow_back_skip,
+    bool show_continue_hint) {
     holdem_set_foreground_mode(app, UiModeBigWin);
     snprintf(app->interstitial_text, sizeof(app->interstitial_text), "%s", text);
     app->interstitial_fireworks = fireworks;
+    app->interstitial_show_continue_hint = show_continue_hint;
     view_port_update(app->view_port);
     flush_input_queue(app);
 
@@ -68,7 +70,7 @@ bool show_interstitial_screen(
 }
 
 bool show_big_win_screen(HoldemApp* app) {
-    return show_interstitial_screen(app, "Big Win!", true, 2000u, true);
+    return show_interstitial_screen(app, "Big Win!", true, 2000u, true, false);
 }
 
 bool show_progressive_blinds_screen(HoldemApp* app) {
@@ -79,7 +81,7 @@ bool show_progressive_blinds_screen(HoldemApp* app) {
         "SB/BB increased to\n$%d/$%d",
         (int)app->game.small_blind,
         (int)app->game.big_blind);
-    return show_interstitial_screen(app, message, false, 2000u, false);
+    return show_interstitial_screen(app, message, false, 2000u, false, false);
 }
 
 void show_hand_result_screen(HoldemApp* app, const PayoutResult* payout) {
@@ -88,13 +90,19 @@ void show_hand_result_screen(HoldemApp* app, const PayoutResult* payout) {
     app->skip_autoplay_requested = false;
 
     int wi = -1;
-    int32_t amt = (wi >= 0) ? payout->payout[wi] : 0;
+    int32_t amt = 0;
     bool split_pot = (payout->count > 1);
 
     if(payout->payout[0] > 0) {
         wi = 0;
     } else if(payout->count > 0) {
         wi = payout->idx[0];
+        for(size_t payout_index = 1; payout_index < payout->count; payout_index++) {
+            int candidate_index = payout->idx[payout_index];
+            if(payout->payout[candidate_index] > payout->payout[wi]) {
+                wi = candidate_index;
+            }
+        }
     }
     amt = (wi >= 0) ? payout->payout[wi] : 0;
 
@@ -176,6 +184,9 @@ static void wait_human_action(
 
     int32_t stack = app->game.players[acting_idx].stack;
     int32_t max_total = stack;
+    bool right_down = false;
+    bool right_long_handled = false;
+    uint32_t right_press_tick = 0u;
     if(max_total < to_call) max_total = to_call;
 
     view_port_update(app->view_port);
@@ -193,13 +204,18 @@ static void wait_human_action(
             continue;
         }
         if(app->mode != UiModeActionPrompt) continue;
-        if(ev.type != InputTypeShort && ev.type != InputTypeRepeat) continue;
+        if(
+            ev.type != InputTypeShort && ev.type != InputTypeRepeat && ev.type != InputTypeLong &&
+            ev.type != InputTypePress && ev.type != InputTypeRelease)
+            continue;
 
         if(ev.key == InputKeyLeft) {
+            if(ev.type != InputTypeShort && ev.type != InputTypeRepeat) continue;
             app->chosen_action = ActFold;
             app->chosen_raise_by = 0;
             app->action_ready = true;
         } else if(ev.key == InputKeyOk) {
+            if(ev.type != InputTypeShort && ev.type != InputTypeRepeat) continue;
             if(app->prompt_bet_total <= to_call) {
                 app->chosen_action = (to_call == 0) ? ActCheck : ActCall;
                 app->chosen_raise_by = 0;
@@ -220,6 +236,7 @@ static void wait_human_action(
             }
             app->action_ready = true;
         } else if(ev.key == InputKeyUp && can_raise) {
+            if(ev.type != InputTypeShort && ev.type != InputTypeRepeat) continue;
             if(app->prompt_bet_total < max_total) {
                 int32_t next = app->prompt_bet_total + app->game.big_blind;
                 if(next > max_total) next = max_total;
@@ -230,14 +247,58 @@ static void wait_human_action(
                     (app->prompt_bet_total > to_call) ? (app->prompt_bet_total - to_call) : 0;
             }
         } else if(ev.key == InputKeyDown && can_raise) {
+            if(ev.type != InputTypeShort && ev.type != InputTypeRepeat) continue;
             int32_t next = app->prompt_bet_total - app->game.big_blind;
             if(next < to_call) next = to_call;
             app->prompt_bet_total = next;
             app->prompt_raise_by =
                 (app->prompt_bet_total > to_call) ? (app->prompt_bet_total - to_call) : 0;
         } else if(ev.key == InputKeyRight && can_raise) {
-            app->prompt_bet_total = to_call;
-            app->prompt_raise_by = 0;
+            if(ev.type == InputTypePress) {
+                right_down = true;
+                right_long_handled = false;
+                right_press_tick = furi_get_tick();
+                continue;
+            }
+
+            if(ev.type == InputTypeRepeat || ev.type == InputTypeLong) {
+                if(right_down && !right_long_handled) {
+                    uint32_t held_ms = furi_get_tick() - right_press_tick;
+                    if(held_ms >= HOLDEM_RIGHT_HOLD_MS) {
+                        app->prompt_bet_total = max_total;
+                        app->prompt_raise_by =
+                            (app->prompt_bet_total > to_call) ? (app->prompt_bet_total - to_call) : 0;
+                        right_long_handled = true;
+                        view_port_update(app->view_port);
+                    }
+                }
+                continue;
+            }
+
+            if(ev.type == InputTypeRelease) {
+                uint32_t held_ms = right_down ? (furi_get_tick() - right_press_tick) : 0u;
+                bool long_handled = right_long_handled;
+                right_down = false;
+                right_long_handled = false;
+
+                if(!long_handled) {
+                    if(held_ms >= HOLDEM_RIGHT_HOLD_MS) {
+                        app->prompt_bet_total = max_total;
+                        app->prompt_raise_by =
+                            (app->prompt_bet_total > to_call) ? (app->prompt_bet_total - to_call) : 0;
+                    } else {
+                        app->prompt_bet_total = to_call;
+                        app->prompt_raise_by = 0;
+                    }
+                }
+                view_port_update(app->view_port);
+                continue;
+            }
+
+            if(ev.type == InputTypeShort && !right_down && !right_long_handled) {
+                app->prompt_bet_total = to_call;
+                app->prompt_raise_by = 0;
+            }
         }
 
         view_port_update(app->view_port);
@@ -417,12 +478,17 @@ static void run_betting_round(HoldemApp* app, int start_player_index, int32_t mi
         }
 
         if(active_player->is_bot) {
+            bool short_all_in_call =
+                (selected_action == ActCall) && active_player->all_in &&
+                (active_player->street_bet < current_bet);
             app->bot_turn_active = true;
             app->bot_turn_idx = active_player_index;
             if(selected_action == ActFold) {
                 snprintf(app->bot_turn_text, sizeof(app->bot_turn_text), "%s Folded", active_player->name);
             } else if(selected_action == ActCheck) {
                 snprintf(app->bot_turn_text, sizeof(app->bot_turn_text), "%s Checked", active_player->name);
+            } else if(short_all_in_call) {
+                snprintf(app->bot_turn_text, sizeof(app->bot_turn_text), "%s is All In", active_player->name);
             } else if(selected_action == ActCall) {
                 if(to_call > 0) {
                     snprintf(app->bot_turn_text, sizeof(app->bot_turn_text), "%s Called $%d", active_player->name, (int)to_call);
@@ -491,6 +557,7 @@ bool play_one_hand(HoldemApp* app, PayoutResult* payout) {
         furi_delay_ms(HOLDEM_ENDTURN_PAUSE_MS);
         return true;
     }
+    normalize_contested_pot(g);
 
     reset_street_bets(g);
     g->stage = StageFlop;
@@ -505,6 +572,7 @@ bool play_one_hand(HoldemApp* app, PayoutResult* payout) {
         furi_delay_ms(HOLDEM_ENDTURN_PAUSE_MS);
         return true;
     }
+    normalize_contested_pot(g);
 
     reset_street_bets(g);
     g->stage = StageTurn;
@@ -519,6 +587,7 @@ bool play_one_hand(HoldemApp* app, PayoutResult* payout) {
         furi_delay_ms(HOLDEM_ENDTURN_PAUSE_MS);
         return true;
     }
+    normalize_contested_pot(g);
 
     reset_street_bets(g);
     g->stage = StageRiver;
@@ -533,6 +602,7 @@ bool play_one_hand(HoldemApp* app, PayoutResult* payout) {
         furi_delay_ms(HOLDEM_ENDTURN_PAUSE_MS);
         return true;
     }
+    normalize_contested_pot(g);
 
     g->stage = StageShowdown;
     app->reveal_all = true;
@@ -562,6 +632,7 @@ bool resume_loaded_hand(HoldemApp* app, PayoutResult* payout) {
             furi_delay_ms(HOLDEM_ENDTURN_PAUSE_MS);
             return true;
         }
+        normalize_contested_pot(g);
         reset_street_bets(g);
         g->stage = StageFlop;
         deal_community(g, 3);
@@ -578,6 +649,7 @@ bool resume_loaded_hand(HoldemApp* app, PayoutResult* payout) {
             furi_delay_ms(HOLDEM_ENDTURN_PAUSE_MS);
             return true;
         }
+        normalize_contested_pot(g);
         reset_street_bets(g);
         g->stage = StageTurn;
         deal_community(g, 1);
@@ -594,6 +666,7 @@ bool resume_loaded_hand(HoldemApp* app, PayoutResult* payout) {
             furi_delay_ms(HOLDEM_ENDTURN_PAUSE_MS);
             return true;
         }
+        normalize_contested_pot(g);
         reset_street_bets(g);
         g->stage = StageRiver;
         deal_community(g, 1);
@@ -610,6 +683,7 @@ bool resume_loaded_hand(HoldemApp* app, PayoutResult* payout) {
             furi_delay_ms(HOLDEM_ENDTURN_PAUSE_MS);
             return true;
         }
+        normalize_contested_pot(g);
         g->stage = StageShowdown;
     }
 

@@ -46,7 +46,6 @@ static bool can_apply_blinds_immediately(const HoldemGame* game) {
 
 static void handle_back_short(HoldemApp* app) {
     if(app->mode == UiModeStartChoice) {
-        delete_save_on_storage();
         app->mode = UiModeStartReady;
         view_port_update(app->view_port);
         return;
@@ -112,16 +111,13 @@ void show_exit_prompt(HoldemApp* app) {
 void reset_to_new_game(HoldemApp* app) {
     init_game_with_player_count(&app->game, app->configured_player_count);
     set_ai_level(app, app->configured_ai_level_pct);
-    if(app->pending_blinds_dirty) {
-        holdem_apply_blind_values_now(app, app->pending_small_blind);
-        app->pending_blinds_dirty = false;
-    }
+    holdem_apply_blind_values_now(app, app->configured_small_blind);
+    app->pending_blinds_dirty = false;
     if(app->progressive_blinds_enabled) {
         holdem_reset_progressive_schedule(app);
     } else {
         app->progressive_next_raise_hand_no = 0;
     }
-    delete_save_on_storage();
     app->mode = UiModeStartReady;
     app->return_mode = UiModeTable;
     app->reveal_all = false;
@@ -132,9 +128,9 @@ void reset_to_new_game(HoldemApp* app) {
     app->bot_turn_idx = -1;
     app->bot_turn_text[0] = '\0';
     app->skip_autoplay_requested = false;
-    app->pending_small_blind = app->game.small_blind;
-    app->blind_edit_sb = app->game.small_blind;
-    app->blind_edit_initial_sb = app->game.small_blind;
+    app->pending_small_blind = app->configured_small_blind;
+    app->blind_edit_sb = app->configured_small_blind;
+    app->blind_edit_initial_sb = app->configured_small_blind;
     app->blind_edit_progressive_enabled = app->progressive_blinds_enabled;
     app->blind_edit_progressive_period_hands = app->progressive_period_hands;
     app->blind_edit_progressive_step_sb = app->progressive_step_sb;
@@ -250,6 +246,7 @@ void apply_or_defer_blind_edit(HoldemApp* app, int32_t new_small_blind) {
 void holdem_commit_blind_edit(HoldemApp* app) {
     if(app->blind_edit_progressive_enabled) {
         bool was_disabled = !app->progressive_blinds_enabled;
+        app->configured_small_blind = app->blind_edit_sb;
         app->progressive_blinds_enabled = true;
         app->progressive_period_hands =
             holdem_clamp_progressive_period(app->blind_edit_progressive_period_hands);
@@ -259,6 +256,7 @@ void holdem_commit_blind_edit(HoldemApp* app) {
         }
     } else {
         bool was_enabled = app->progressive_blinds_enabled;
+        app->configured_small_blind = app->blind_edit_sb;
         app->progressive_blinds_enabled = false;
         if(was_enabled) {
             app->progressive_next_raise_hand_no = 0;
@@ -315,6 +313,7 @@ bool process_global_event(HoldemApp* app, const InputEvent* ev) {
     if(app->mode == UiModeStartChoice) {
         if(ev->key == InputKeyOk) {
             uint8_t loaded_ai_level = HOLDEM_AI_DEFAULT_LEVEL;
+            int32_t loaded_configured_small_blind = holdem_default_small_blind();
             app->progressive_blinds_enabled = false;
             app->progressive_period_hands = HOLDEM_PROGRESSIVE_DEFAULT_PERIOD_HANDS;
             app->progressive_step_sb = HOLDEM_PROGRESSIVE_DEFAULT_STEP_SB;
@@ -322,19 +321,24 @@ bool process_global_event(HoldemApp* app, const InputEvent* ev) {
             (void)load_progress(
                 &app->game,
                 &loaded_ai_level,
+                &loaded_configured_small_blind,
                 &app->progressive_blinds_enabled,
                 &app->progressive_period_hands,
                 &app->progressive_step_sb,
                 &app->progressive_next_raise_hand_no);
             set_ai_level(app, loaded_ai_level);
+            app->configured_small_blind = loaded_configured_small_blind;
             app->configured_player_count = app->game.player_count;
             app->bot_count_edit_value = app->configured_player_count;
             app->configured_ai_level_pct = app->ai_level_pct;
             app->bot_difficulty_edit_value = app->configured_ai_level_pct;
-            app->pending_blinds_dirty = false;
-            app->pending_small_blind = app->game.small_blind;
-            app->blind_edit_sb = app->game.small_blind;
-            app->blind_edit_initial_sb = app->game.small_blind;
+            app->pending_blinds_dirty =
+                !app->progressive_blinds_enabled &&
+                (app->configured_small_blind != app->game.small_blind);
+            app->pending_small_blind =
+                app->pending_blinds_dirty ? app->configured_small_blind : app->game.small_blind;
+            app->blind_edit_sb = app->configured_small_blind;
+            app->blind_edit_initial_sb = app->configured_small_blind;
             app->blind_edit_progressive_enabled = app->progressive_blinds_enabled;
             app->blind_edit_progressive_period_hands = app->progressive_period_hands;
             app->blind_edit_progressive_step_sb = app->progressive_step_sb;
@@ -377,7 +381,7 @@ bool process_global_event(HoldemApp* app, const InputEvent* ev) {
             return true;
         }
         if(app->help_page == 1 && ev->key == InputKeyOk) {
-            app->blind_edit_sb = app->pending_blinds_dirty ? app->pending_small_blind : app->game.small_blind;
+            app->blind_edit_sb = app->configured_small_blind;
             app->blind_edit_initial_sb = app->blind_edit_sb;
             app->blind_edit_progressive_enabled = app->progressive_blinds_enabled;
             app->blind_edit_progressive_period_hands = app->progressive_period_hands;
@@ -535,7 +539,8 @@ void flush_input_queue(HoldemApp* app) {
 }
 
 bool holdem_can_skip_folded_autoplay(const HoldemApp* app) {
-    return app->game.hand_in_progress && !app->game.players[0].in_hand && !app->showdown_waiting;
+    const Player* you = &app->game.players[0];
+    return app->game.hand_in_progress && !app->showdown_waiting && (!you->in_hand || you->all_in);
 }
 
 void startup_splash_and_jingle(HoldemApp* app) {

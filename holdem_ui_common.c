@@ -4,15 +4,18 @@
 const char* k_stage_name[] = {"PREFLOP", "FLOP", "TURN", "RIVER", "SHOWDOWN"};
 
 void holdem_draw_line(Canvas* canvas, uint8_t y, const char* text) {
-    canvas_draw_str(canvas, 0, y, text);
+    holdem_draw_display_text(canvas, 0, y, text);
 }
 
 void holdem_draw_line_right(Canvas* canvas, uint8_t y, const char* text) {
-    canvas_draw_str_aligned(canvas, 127, y, AlignRight, AlignBottom, text);
+    uint8_t text_width = holdem_display_text_width(canvas, text);
+    uint8_t draw_x = (text_width >= 128u) ? 0u : (uint8_t)(128u - text_width);
+    holdem_draw_display_text(canvas, draw_x, y, text);
 }
 
 #define HOLDEM_BACK_ICON_SIZE 8u
 #define HOLDEM_OK_ICON_SIZE 6u
+#define HOLDEM_CHIP_ICON_SIZE 7u
 #define HOLDEM_UPDOWN_ICON_WIDTH 7u
 #define HOLDEM_UPDOWN_ICON_HEIGHT 7u
 #define HOLDEM_LR_ICON_SIZE 7u
@@ -23,6 +26,8 @@ static const uint8_t k_holdem_back_icon[HOLDEM_BACK_ICON_SIZE] = {
 
 static const uint8_t k_holdem_ok_icon[HOLDEM_OK_ICON_SIZE] = {
     0x1Eu, 0x3Fu, 0x3Fu, 0x3Fu, 0x3Fu, 0x1Eu};
+static const uint8_t k_holdem_chip_icon[HOLDEM_CHIP_ICON_SIZE] = {
+    0x08u, 0x1Eu, 0x28u, 0x1Cu, 0x0Au, 0x3Cu, 0x08u};
 
 // Compact triangle-style navigation glyphs are the shared control language across the app.
 static const uint8_t k_holdem_updown_icon[HOLDEM_UPDOWN_ICON_HEIGHT] = {
@@ -75,6 +80,72 @@ void holdem_draw_ok_icon(Canvas* canvas, uint8_t x, uint8_t baseline_y) {
         HOLDEM_OK_ICON_SIZE);
 }
 
+void holdem_draw_chip_icon(Canvas* canvas, uint8_t x, uint8_t baseline_y) {
+    holdem_draw_bitmap_glyph(
+        canvas,
+        x,
+        (uint8_t)(baseline_y - HOLDEM_CHIP_ICON_SIZE),
+        k_holdem_chip_icon,
+        HOLDEM_CHIP_ICON_SIZE,
+        HOLDEM_CHIP_ICON_SIZE);
+}
+
+uint8_t holdem_display_text_width(Canvas* canvas, const char* text) {
+    if(!text || !text[0]) return 0u;
+
+    uint8_t total_width = 0u;
+    char run[64];
+    size_t run_length = 0u;
+
+    for(size_t text_index = 0; text[text_index]; text_index++) {
+        if(text[text_index] == '$') {
+            if(run_length > 0u) {
+                run[run_length] = '\0';
+                total_width = (uint8_t)(total_width + canvas_string_width(canvas, run));
+                run_length = 0u;
+            }
+            total_width = (uint8_t)(total_width + HOLDEM_CHIP_ICON_SIZE);
+        } else if(run_length + 1u < sizeof(run)) {
+            run[run_length++] = text[text_index];
+        }
+    }
+
+    if(run_length > 0u) {
+        run[run_length] = '\0';
+        total_width = (uint8_t)(total_width + canvas_string_width(canvas, run));
+    }
+
+    return total_width;
+}
+
+void holdem_draw_display_text(Canvas* canvas, uint8_t x, uint8_t baseline_y, const char* text) {
+    if(!text || !text[0]) return;
+
+    uint8_t draw_x = x;
+    char run[64];
+    size_t run_length = 0u;
+
+    for(size_t text_index = 0; text[text_index]; text_index++) {
+        if(text[text_index] == '$') {
+            if(run_length > 0u) {
+                run[run_length] = '\0';
+                canvas_draw_str(canvas, draw_x, baseline_y, run);
+                draw_x = (uint8_t)(draw_x + canvas_string_width(canvas, run));
+                run_length = 0u;
+            }
+            holdem_draw_chip_icon(canvas, draw_x, baseline_y);
+            draw_x = (uint8_t)(draw_x + HOLDEM_CHIP_ICON_SIZE);
+        } else if(run_length + 1u < sizeof(run)) {
+            run[run_length++] = text[text_index];
+        }
+    }
+
+    if(run_length > 0u) {
+        run[run_length] = '\0';
+        canvas_draw_str(canvas, draw_x, baseline_y, run);
+    }
+}
+
 uint8_t holdem_centered_x_for_width(uint8_t width) {
     if(width >= 128u) return 0u;
     return (uint8_t)((128u - width + 1u) / 2u);
@@ -82,8 +153,8 @@ uint8_t holdem_centered_x_for_width(uint8_t width) {
 
 void holdem_draw_text_centered(Canvas* canvas, uint8_t baseline_y, const char* text) {
     const char* safe_text = text ? text : "";
-    uint8_t draw_x = holdem_centered_x_for_width(canvas_string_width(canvas, safe_text));
-    canvas_draw_str(canvas, draw_x, baseline_y, safe_text);
+    uint8_t draw_x = holdem_centered_x_for_width(holdem_display_text_width(canvas, safe_text));
+    holdem_draw_display_text(canvas, draw_x, baseline_y, safe_text);
 }
 
 void holdem_draw_centered_inline_lr_text(
@@ -97,16 +168,16 @@ void holdem_draw_centered_inline_lr_text(
     const char* safe_prefix = prefix ? prefix : "";
     const char* safe_middle = middle ? middle : "";
     const char* safe_suffix = suffix ? suffix : "";
-    uint8_t prefix_width = canvas_string_width(canvas, safe_prefix);
-    uint8_t middle_width = canvas_string_width(canvas, safe_middle);
-    uint8_t suffix_width = canvas_string_width(canvas, safe_suffix);
+    uint8_t prefix_width = holdem_display_text_width(canvas, safe_prefix);
+    uint8_t middle_width = holdem_display_text_width(canvas, safe_middle);
+    uint8_t suffix_width = holdem_display_text_width(canvas, safe_suffix);
     uint8_t total_width = (uint8_t)(
         prefix_width + (left_present ? HOLDEM_LR_ICON_SIZE : 0u) + middle_width +
         (right_present ? HOLDEM_LR_ICON_SIZE : 0u) + suffix_width);
     uint8_t draw_x = holdem_centered_x_for_width(total_width);
 
     if(prefix_width > 0u) {
-        canvas_draw_str(canvas, draw_x, baseline_y, safe_prefix);
+        holdem_draw_display_text(canvas, draw_x, baseline_y, safe_prefix);
         draw_x = (uint8_t)(draw_x + prefix_width);
     }
     if(left_present) {
@@ -114,7 +185,7 @@ void holdem_draw_centered_inline_lr_text(
         draw_x = (uint8_t)(draw_x + HOLDEM_LR_ICON_SIZE);
     }
     if(middle_width > 0u) {
-        canvas_draw_str(canvas, draw_x, baseline_y, safe_middle);
+        holdem_draw_display_text(canvas, draw_x, baseline_y, safe_middle);
         draw_x = (uint8_t)(draw_x + middle_width);
     }
     if(right_present) {
@@ -122,7 +193,7 @@ void holdem_draw_centered_inline_lr_text(
         draw_x = (uint8_t)(draw_x + HOLDEM_LR_ICON_SIZE);
     }
     if(suffix_width > 0u) {
-        canvas_draw_str(canvas, draw_x, baseline_y, safe_suffix);
+        holdem_draw_display_text(canvas, draw_x, baseline_y, safe_suffix);
     }
 }
 
@@ -131,8 +202,10 @@ uint8_t holdem_ok_sequence_width_with_gap(
     const char* before_text,
     const char* after_text,
     uint8_t after_gap_px) {
-    uint8_t before_width = (before_text && before_text[0]) ? canvas_string_width(canvas, before_text) : 0u;
-    uint8_t after_width = (after_text && after_text[0]) ? canvas_string_width(canvas, after_text) : 0u;
+    uint8_t before_width =
+        (before_text && before_text[0]) ? holdem_display_text_width(canvas, before_text) : 0u;
+    uint8_t after_width =
+        (after_text && after_text[0]) ? holdem_display_text_width(canvas, after_text) : 0u;
     uint8_t gap_width = (after_text && after_text[0]) ? after_gap_px : 0u;
     return (uint8_t)(before_width + HOLDEM_OK_ICON_SIZE + gap_width + after_width);
 }
@@ -151,8 +224,8 @@ void holdem_draw_ok_sequence_with_gap(
     uint8_t draw_x = x;
 
     if(before_text && before_text[0]) {
-        canvas_draw_str(canvas, draw_x, baseline_y, before_text);
-        draw_x = (uint8_t)(draw_x + canvas_string_width(canvas, before_text));
+        holdem_draw_display_text(canvas, draw_x, baseline_y, before_text);
+        draw_x = (uint8_t)(draw_x + holdem_display_text_width(canvas, before_text));
     }
 
     holdem_draw_ok_icon(canvas, draw_x, baseline_y);
@@ -160,7 +233,7 @@ void holdem_draw_ok_sequence_with_gap(
 
     if(after_text && after_text[0]) {
         draw_x = (uint8_t)(draw_x + after_gap_px);
-        canvas_draw_str(canvas, draw_x, baseline_y, after_text);
+        holdem_draw_display_text(canvas, draw_x, baseline_y, after_text);
     }
 }
 
@@ -298,8 +371,10 @@ void holdem_draw_back_sequence_right(
     uint8_t baseline_y,
     const char* before_text,
     const char* after_text) {
-    uint8_t before_width = (before_text && before_text[0]) ? canvas_string_width(canvas, before_text) : 0u;
-    uint8_t after_width = (after_text && after_text[0]) ? canvas_string_width(canvas, after_text) : 0u;
+    uint8_t before_width =
+        (before_text && before_text[0]) ? holdem_display_text_width(canvas, before_text) : 0u;
+    uint8_t after_width =
+        (after_text && after_text[0]) ? holdem_display_text_width(canvas, after_text) : 0u;
     uint8_t total_width = (uint8_t)(before_width + HOLDEM_BACK_ICON_SIZE + after_width);
     uint8_t draw_x = (uint8_t)(128u - total_width);
 

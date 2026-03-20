@@ -6,11 +6,11 @@
 #define HOLDEM_CARD_AREA_START_X 96u
 #define HOLDEM_HIDDEN_TOKEN_EXTRA_GAP 1u
 #define HOLDEM_TURN_MARK_X 0u
-#define HOLDEM_NAME_X 4u
-#define HOLDEM_ROLE_X 36u
-#define HOLDEM_STATUS_X 42u
+#define HOLDEM_NAME_X 6u
+#define HOLDEM_ROLE_X 37u
+#define HOLDEM_STATUS_X 43u
 #define HOLDEM_STACK_DOLLAR_X 58u
-#define HOLDEM_STACK_VALUE_X 64u
+#define HOLDEM_STACK_VALUE_X 65u
 #define HOLDEM_UPDOWN_ICON_WIDTH 7u
 #define HOLDEM_LR_ICON_SIZE 7u
 
@@ -47,7 +47,7 @@ static void holdem_draw_action_footer(
     snprintf(right_text, sizeof(right_text), "%s ", ok_action);
 
     left_width = HOLDEM_LR_ICON_SIZE + 1u + holdem_text_width(left_text);
-    center_text_width = canvas_string_width(canvas, center_text);
+    center_text_width = holdem_display_text_width(canvas, center_text);
     center_width = center_text_width + (show_center_glyph ? HOLDEM_UPDOWN_ICON_WIDTH : 0);
     right_width = holdem_ok_sequence_width(canvas, right_text, "");
 
@@ -65,10 +65,13 @@ static void holdem_draw_action_footer(
 
     holdem_draw_left_icon(canvas, left_x, baseline_y);
     canvas_draw_str(canvas, (uint8_t)(left_x + HOLDEM_LR_ICON_SIZE + 1u), baseline_y, left_text);
-    canvas_draw_str(canvas, (uint8_t)center_x, baseline_y, center_text);
+    holdem_draw_display_text(canvas, (uint8_t)center_x, baseline_y, center_text);
     if(show_center_glyph) {
         holdem_draw_nav_glyph(
-            canvas, (uint8_t)(center_x + center_text_width + 1), baseline_y, center_glyph);
+            canvas,
+            (uint8_t)(center_x + center_text_width + 1),
+            baseline_y,
+            center_glyph);
     }
     holdem_draw_ok_sequence_right(canvas, baseline_y, right_text, "");
 }
@@ -89,7 +92,7 @@ static void holdem_draw_table_header(Canvas* canvas, const HoldemGame* game) {
 
     left_width = canvas_string_width(canvas, left_text);
     center_width = canvas_string_width(canvas, center_text);
-    right_width = canvas_string_width(canvas, right_text);
+    right_width = holdem_display_text_width(canvas, right_text);
 
     float left_end = (float)left_width;
     float right_start = 127.0f - (float)right_width;
@@ -104,7 +107,7 @@ static void holdem_draw_table_header(Canvas* canvas, const HoldemGame* game) {
 
     if(available_gap < (float)center_width + (min_gap * 2.0f)) {
         snprintf(right_text, sizeof(right_text), "P: $%d", (int)game->pot);
-        right_width = canvas_string_width(canvas, right_text);
+        right_width = holdem_display_text_width(canvas, right_text);
         right_start = 127.0f - (float)right_width;
         available_gap = right_start - left_end;
     }
@@ -123,7 +126,7 @@ static void holdem_draw_table_header(Canvas* canvas, const HoldemGame* game) {
 
     canvas_draw_str(canvas, 0, 8, left_text);
     canvas_draw_str(canvas, (uint8_t)center_x, 8, center_text);
-    canvas_draw_str_aligned(canvas, 127, 8, AlignRight, AlignBottom, right_text);
+    holdem_draw_line_right(canvas, 8, right_text);
 }
 
 static void holdem_draw_suit_icon(Canvas* canvas, uint8_t x, uint8_t baseline_y, uint8_t suit) {
@@ -241,7 +244,7 @@ static void holdem_draw_interstitial_screen(Canvas* canvas, const HoldemApp* app
         holdem_draw_text_centered(canvas, 28, first_line);
         holdem_draw_text_centered(canvas, 36, second_line);
     } else {
-        holdem_draw_text_centered(canvas, 32, app->interstitial_text);
+        holdem_draw_text_centered(canvas, 36, app->interstitial_text);
     }
 
     if(app->interstitial_fireworks) {
@@ -250,6 +253,28 @@ static void holdem_draw_interstitial_screen(Canvas* canvas, const HoldemApp* app
         holdem_draw_firework(canvas, 20, 48, (uint8_t)((anim_tick + 2u) & 0x03u));
         holdem_draw_firework(canvas, 108, 48, (uint8_t)((anim_tick + 3u) & 0x03u));
     }
+
+    if(app->interstitial_show_continue_hint) {
+        holdem_draw_ok_sequence_right(canvas, 64, "Continue ", "");
+    }
+}
+
+static uint8_t holdem_result_block_baseline(size_t line_index, size_t line_count) {
+    static const uint8_t k_three_line_baselines[3] = {30u, 38u, 46u};
+    static const uint8_t k_four_line_baselines[4] = {26u, 34u, 42u, 50u};
+
+    if(line_count == 3u && line_index < 3u) {
+        return k_three_line_baselines[line_index];
+    }
+    if(line_count == 4u && line_index < 4u) {
+        return k_four_line_baselines[line_index];
+    }
+
+    const uint8_t center_baseline_y = 38u;
+    const uint8_t line_step = 8u;
+    uint8_t first_baseline_y =
+        (uint8_t)(center_baseline_y - (((line_count - 1u) * line_step) / 2u));
+    return (uint8_t)(first_baseline_y + (line_step * line_index));
 }
 
 static void holdem_draw_player_row(
@@ -284,7 +309,7 @@ static void holdem_draw_player_row(
     canvas_draw_str(canvas, HOLDEM_NAME_X, baseline_y, holdem_display_name(player));
     canvas_draw_str(canvas, HOLDEM_ROLE_X, baseline_y, role_text);
     canvas_draw_str(canvas, HOLDEM_STATUS_X, baseline_y, status_text);
-    canvas_draw_str(canvas, HOLDEM_STACK_DOLLAR_X, baseline_y, "$");
+    holdem_draw_chip_icon(canvas, HOLDEM_STACK_DOLLAR_X, baseline_y);
     canvas_draw_str(canvas, HOLDEM_STACK_VALUE_X, baseline_y, stack_text);
 
     if(!player->is_bot) {
@@ -347,10 +372,9 @@ void holdem_draw_callback(Canvas* canvas, void* ctx) {
     }
 
     if(app->mode == UiModeStartChoice) {
-        holdem_draw_line(canvas, 8, "Saved game found");
-        holdem_draw_line(canvas, 16, "");
-        holdem_draw_ok_sequence(canvas, 0, 24, "", " Load save");
-        holdem_draw_back_sequence(canvas, 0, 32, "", ": New game");
+        holdem_draw_text_centered(canvas, 36, "Saved game found");
+        holdem_draw_back_sequence(canvas, 0, 64, "", " New");
+        holdem_draw_ok_sequence_right(canvas, 64, "Load ", "");
         return;
     }
 
@@ -382,7 +406,7 @@ void holdem_draw_callback(Canvas* canvas, void* ctx) {
             holdem_draw_nav_glyph(canvas, 0, 32, HoldemNavGlyphUpDown);
             canvas_draw_str(canvas, 8, 32, " Bet +/-");
             holdem_draw_right_icon(canvas, 0, 40);
-            canvas_draw_str(canvas, 8, 40, " Reset Bet");
+            canvas_draw_str(canvas, 8, 40, " Reset Bet (hold for All In)");
             holdem_draw_left_icon(canvas, 0, 48);
             canvas_draw_str(canvas, 8, 48, " Fold");
             holdem_draw_back_cancel_hint(canvas, 64);
@@ -393,19 +417,15 @@ void holdem_draw_callback(Canvas* canvas, void* ctx) {
             canvas_draw_str(canvas, page_draw_x, 8, page_text);
             holdem_draw_nav_icon(canvas, (uint8_t)(127u - HOLDEM_UPDOWN_ICON_WIDTH), 8, app->help_page, 3u);
             holdem_draw_line(canvas, 16, "");
-            holdem_draw_ok_sequence_with_gap(canvas, 0, 24, "", " Edit blinds (", 2u);
-            canvas_draw_str(
-                canvas,
-                holdem_ok_sequence_width_with_gap(canvas, "", " Edit blinds (", 2u),
-                24,
-                app->progressive_blinds_enabled ? "P - " : "");
             snprintf(blind_line, sizeof(blind_line), "%d/%d)", (int)menu_small_blind, (int)menu_big_blind);
-            canvas_draw_str(
-                canvas,
-                (uint8_t)(holdem_ok_sequence_width_with_gap(canvas, "", " Edit blinds (", 2u) +
-                          (app->progressive_blinds_enabled ? canvas_string_width(canvas, "P - ") : 0u)),
-                24,
-                blind_line);
+            snprintf(
+                bot_line,
+                sizeof(bot_line),
+                app->progressive_blinds_enabled ? " Edit blinds (P - $%d/$%d)" :
+                                                  " Edit blinds ($%d/$%d)",
+                (int)menu_small_blind,
+                (int)menu_big_blind);
+            holdem_draw_ok_sequence_with_gap(canvas, 0, 24, "", bot_line, 2u);
             holdem_draw_right_icon(canvas, 0, 32);
             snprintf(
                 bot_line,
@@ -443,15 +463,15 @@ void holdem_draw_callback(Canvas* canvas, void* ctx) {
             bool can_increase_sb = (app->blind_edit_sb < 500);
             bool can_decrease_sb = (app->blind_edit_sb > HOLDEM_BLIND_STEP_SB);
             HoldemNavGlyph blind_glyph = HoldemNavGlyphUpDown;
-            snprintf(blind_line, sizeof(blind_line), "SB/BB: %d/%d", (int)app->blind_edit_sb, (int)(app->blind_edit_sb * 2));
+            snprintf(blind_line, sizeof(blind_line), "SB/BB: $%d/$%d", (int)app->blind_edit_sb, (int)(app->blind_edit_sb * 2));
             if(can_increase_sb && !can_decrease_sb) blind_glyph = HoldemNavGlyphUp;
             else if(!can_increase_sb && can_decrease_sb) blind_glyph = HoldemNavGlyphDown;
 
             canvas_draw_str(canvas, 0, 24, progress_text);
             holdem_draw_right_icon(canvas, (uint8_t)(progress_text_width + 1u), 24);
-            canvas_draw_str(canvas, 0, 32, blind_line);
+            holdem_draw_display_text(canvas, 0, 32, blind_line);
             holdem_draw_nav_glyph(
-                canvas, (uint8_t)(canvas_string_width(canvas, blind_line) + 3u), 32, blind_glyph);
+                canvas, (uint8_t)(holdem_display_text_width(canvas, blind_line) + 3u), 32, blind_glyph);
             if(app->blind_edit_sb != app->blind_edit_initial_sb) {
                 holdem_draw_left_icon(canvas, 0, 40);
                 canvas_draw_str(canvas, 8, 40, " Reset blinds");
@@ -496,10 +516,10 @@ void holdem_draw_callback(Canvas* canvas, void* ctx) {
             snprintf(period_middle, sizeof(period_middle), "%d", (int)app->blind_edit_progressive_period_hands);
             holdem_draw_line(canvas, 32, "");
             {
-                uint8_t increase_text_width = canvas_string_width(canvas, increase_middle);
+                uint8_t increase_text_width = holdem_display_text_width(canvas, increase_middle);
                 uint8_t increase_total_width = (uint8_t)(increase_text_width + 1u + HOLDEM_UPDOWN_ICON_WIDTH);
                 uint8_t increase_x = holdem_centered_x_for_width(increase_total_width);
-                canvas_draw_str(canvas, increase_x, 40, increase_middle);
+                holdem_draw_display_text(canvas, increase_x, 40, increase_middle);
                 holdem_draw_nav_glyph(
                     canvas,
                     (uint8_t)(increase_x + increase_text_width + 3u),
@@ -590,22 +610,29 @@ void holdem_draw_callback(Canvas* canvas, void* ctx) {
     }
 
     if(app->mode == UiModePause) {
-        const uint8_t result_line1_y = 30;
-        const uint8_t result_line2_y = 38;
-        const uint8_t result_line3_y = 46;
-        const uint8_t result_line4_y = 54;
+        size_t result_line_count = app->pause_body4[0] ? 4u : 3u;
 
         holdem_draw_line(canvas, 8, app->pause_title);
         holdem_draw_line(canvas, 20, "");
         if(app->pause_card_count > 0) {
-            holdem_draw_pause_cards_centered(canvas, result_line1_y, app->pause_cards, app->pause_card_count);
+            holdem_draw_pause_cards_centered(
+                canvas,
+                holdem_result_block_baseline(0u, result_line_count),
+                app->pause_cards,
+                app->pause_card_count);
         } else if(app->pause_body3[0]) {
-            holdem_draw_text_centered(canvas, result_line1_y, app->pause_body3);
+            holdem_draw_text_centered(
+                canvas,
+                holdem_result_block_baseline(0u, result_line_count),
+                app->pause_body3);
         }
-        holdem_draw_text_centered(canvas, result_line2_y, app->pause_body2);
-        holdem_draw_text_centered(canvas, result_line3_y, app->pause_body);
+        holdem_draw_text_centered(
+            canvas, holdem_result_block_baseline(1u, result_line_count), app->pause_body2);
+        holdem_draw_text_centered(
+            canvas, holdem_result_block_baseline(2u, result_line_count), app->pause_body);
         if(app->pause_body4[0]) {
-            holdem_draw_text_centered(canvas, result_line4_y, app->pause_body4);
+            holdem_draw_text_centered(
+                canvas, holdem_result_block_baseline(3u, result_line_count), app->pause_body4);
         }
         if(app->pause_footer[0]) {
             holdem_draw_ok_sequence_right(canvas, 64, app->pause_footer, "");
@@ -654,14 +681,21 @@ void holdem_draw_callback(Canvas* canvas, void* ctx) {
         bool can_raise = (app->prompt_bet_total < acting_stack) &&
                          ((app->prompt_bet_total <= app->prompt_to_call) ||
                           (app->prompt_raise_by > 0));
+        bool raise_selected = app->prompt_bet_total > app->prompt_to_call;
         if(app->prompt_bet_total <= app->prompt_to_call) {
-            ok_action = (app->prompt_to_call == 0) ? "Check" : "Call";
+            if(app->prompt_to_call == 0) {
+                ok_action = "Check";
+            } else if(app->prompt_to_call > acting_stack) {
+                ok_action = "All In";
+            } else {
+                ok_action = "Call";
+            }
             show_bet_glyph = can_raise;
         } else {
-            ok_action = "Raise";
+            ok_action = (app->prompt_bet_total >= acting_stack) ? "All In" : "Raise";
             bet_glyph = (app->prompt_bet_total >= acting_stack) ? HoldemNavGlyphDown :
                                                                 HoldemNavGlyphUpDown;
-            show_bet_glyph = can_raise;
+            show_bet_glyph = raise_selected;
         }
 
         holdem_draw_line(canvas, 56, "");

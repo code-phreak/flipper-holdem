@@ -13,6 +13,7 @@ void delete_save_on_storage(void);
 bool save_progress(
     const HoldemGame* game,
     uint8_t ai_level_pct,
+    int32_t configured_small_blind,
     bool progressive_blinds_enabled,
     uint8_t progressive_period_hands,
     int32_t progressive_step_sb,
@@ -22,6 +23,7 @@ bool save_progress(
 bool load_progress(
     HoldemGame* game,
     uint8_t* ai_level_pct,
+    int32_t* configured_small_blind,
     bool* progressive_blinds_enabled,
     uint8_t* progressive_period_hands,
     int32_t* progressive_step_sb,
