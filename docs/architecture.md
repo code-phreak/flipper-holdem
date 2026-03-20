@@ -21,7 +21,7 @@ This document describes how the Hold 'em app is organized so contributors can ex
 - `holdem_eval.c`: hand scoring and card formatting
 - `holdem_storage.c`: save/load and legacy migration
 
-This split is intentional. The project now treats contributor readability as a feature and aims to keep source files under roughly 1000 lines wherever practical.
+This split is intentional. The project treats contributor readability as a feature and keeps modules focused so UI, gameplay, and storage work can evolve without crowding each other.
 
 ## UI Modes
 
@@ -66,8 +66,8 @@ Three-line and four-line result layouts intentionally use different vertical anc
 
 - Single save slot: `/ext/apps_data/holdem/save.bin`
 - Save contains the full `HoldemGame` state plus persisted gameplay settings such as bot difficulty and blind configuration
-- Persisted settings currently include table size (`player_count`), the live blind values, the configured base small blind for future fresh games, bot difficulty, and the full progressive-blind schedule state
-- Starting or playing a fresh unsaved game no longer clears the previously stored save slot until a later save overwrites it
+- Persisted settings include table size (`player_count`), the live blind values, the configured base small blind for future fresh games, bot difficulty, and the full progressive-blind schedule state
+- Starting or playing a fresh unsaved game does not clear the previously stored save slot until a later save overwrites it
 - Legacy save migration is handled in `holdem_storage.c` and should stay conservative
 - Progressive blind scheduling persists via the next scheduled raise hand number, so a loaded save can trigger the next blind increase at the correct future hand boundary
 
@@ -81,7 +81,7 @@ Three-line and four-line result layouts intentionally use different vertical anc
 - Bot raise sizing is rounded onto the table's small-blind increment so AI-generated bet sizes stay on the same visible chip grid as the human controls
 - `Extreme` adds stronger preflop hand-shape reading, postflop draw awareness, tighter bluff discipline, and more assertive value raising without abandoning the single-threaded lightweight runtime budget
 
-## Current Branch Focus
+## Release 1.1 Scope
 
 - Five total players are now supported, with one human and up to four bots
 - The denser table layout depends on footer compaction and tighter menu spacing across the split UI modules

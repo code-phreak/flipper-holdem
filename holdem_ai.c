@@ -26,6 +26,12 @@ static bool is_extreme_ai(uint8_t ai_level_pct) {
     return ai_level_pct >= HOLDEM_AI_EXTREME_LEVEL;
 }
 
+static bool is_easy_ai(uint8_t ai_level_pct) {
+    return ai_level_pct <= HOLDEM_AI_EASY_LEVEL;
+}
+
+static int board_wetness(const HoldemGame* game);
+
 static bool is_heads_up_pot(const HoldemGame* game) {
     size_t contenders = 0;
     for(size_t player_index = 0; player_index < game->player_count; player_index++) {
@@ -65,6 +71,41 @@ static int heads_up_defense_discount(
     }
 
     return (int)clamp_i32(discount, 0, 18);
+}
+
+// Easy bots should occasionally continue cheaply with weak hands so they do not
+// feel robotic or trivially bullyable in heads-up pots.
+static bool easy_loose_continue(
+    const HoldemGame* game,
+    const Player* player,
+    int32_t to_call,
+    int strength,
+    int random_roll,
+    uint8_t ai_level_pct) {
+    if(!is_easy_ai(ai_level_pct) || game->stage != StagePreflop || to_call <= 0) return false;
+    if(to_call > game->big_blind * 2) return false;
+    if(player->stack <= 0) return false;
+
+    int call_stack_percent = (int)((to_call * 100) / player->stack);
+    if(call_stack_percent > 12) return false;
+
+    if(strength >= 34) return true;
+    if(strength >= 26 && random_roll < 28) return true;
+    return (strength >= 20) && (random_roll < 18);
+}
+
+// Give Easy bots an occasional smallest-legal stab when checked to on early streets,
+// but only on relatively dry boards so the behavior reads as a light bluff, not clairvoyance.
+static bool easy_min_stab_spot(
+    const HoldemGame* game,
+    int strength,
+    int random_roll,
+    uint8_t ai_level_pct) {
+    if(!is_easy_ai(ai_level_pct)) return false;
+    if(game->stage != StageFlop && game->stage != StageTurn) return false;
+    if(board_wetness(game) >= 45) return false;
+    if(strength >= 48) return false;
+    return random_roll < ((game->stage == StageFlop) ? 26 : 18);
 }
 
 // Evaluate best 5-card score from any 5-of-N combination.
@@ -370,6 +411,16 @@ void bot_action(
 
         if(
             can_raise &&
+            min_raise > 0 &&
+            can_commit_stack(game, player, min_raise, decision_strength, app->ai_level_pct) &&
+            easy_min_stab_spot(game, decision_strength, random_roll, app->ai_level_pct)) {
+            *action = ActRaise;
+            *amount = min_raise;
+            return;
+        }
+
+        if(
+            can_raise &&
             raise_by > 0 && can_commit_stack(game, player, raise_by, decision_strength, app->ai_level_pct) &&
             (raise_for_value || light_bluff)) {
             *action = ActRaise;
@@ -392,6 +443,11 @@ void bot_action(
     if(
         !can_commit_stack(game, player, to_call, decision_strength, app->ai_level_pct) ||
         decision_strength + (random_roll / 8) < required_strength) {
+        if(easy_loose_continue(game, player, to_call, decision_strength, random_roll, app->ai_level_pct)) {
+            *action = ActCall;
+            *amount = 0;
+            return;
+        }
         *action = ActFold;
         *amount = 0;
         return;

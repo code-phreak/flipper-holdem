@@ -133,6 +133,36 @@ static void refund_uncalled_excess(HoldemGame* game) {
     game->pot -= uncalled_excess;
 }
 
+static int32_t forced_preflop_contribution_for_player(const HoldemGame* game, int player_index) {
+    if(game->stage != StagePreflop) return 0;
+    if(player_index == game->sb_idx) return game->small_blind;
+    if(player_index == game->bb_idx) return game->big_blind;
+    return 0;
+}
+
+static void refund_uncalled_fold_action(HoldemGame* game, int winner_index) {
+    if(winner_index < 0 || winner_index >= (int)game->player_count) return;
+
+    Player* winner = &game->players[winner_index];
+    int32_t forced_contribution = forced_preflop_contribution_for_player(game, winner_index);
+    int32_t uncalled_action = winner->street_bet - forced_contribution;
+
+    if(uncalled_action <= 0) return;
+
+    winner->stack += uncalled_action;
+    winner->street_bet -= uncalled_action;
+    if(winner->hand_contrib >= uncalled_action) {
+        winner->hand_contrib -= uncalled_action;
+    } else {
+        winner->hand_contrib = 0;
+    }
+    if(game->pot >= uncalled_action) {
+        game->pot -= uncalled_action;
+    } else {
+        game->pot = 0;
+    }
+}
+
 void normalize_contested_pot(HoldemGame* game) {
     if(active_in_hand_count(game) > 1) {
         refund_uncalled_excess(game);
@@ -199,12 +229,7 @@ bool resolve_fold_win(HoldemGame* game, PayoutResult* payout_result) {
     }
 
     if(active_players == 1 && winner_index >= 0) {
-        bool is_preflop_big_blind_walk = (game->stage == StagePreflop) &&
-                                         (winner_index == game->bb_idx) &&
-                                         (game->pot == (game->small_blind + game->big_blind));
-        if(!is_preflop_big_blind_walk) {
-            refund_uncalled_excess(game);
-        }
+        refund_uncalled_fold_action(game, winner_index);
         int32_t payout = game->pot;
         memset(payout_result, 0, sizeof(*payout_result));
         payout_result->idx[0] = winner_index;

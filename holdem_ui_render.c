@@ -373,8 +373,8 @@ void holdem_draw_callback(Canvas* canvas, void* ctx) {
 
     if(app->mode == UiModeStartChoice) {
         holdem_draw_text_centered(canvas, 36, "Saved game found");
-        holdem_draw_back_sequence(canvas, 0, 64, "", " New");
-        holdem_draw_ok_sequence_right(canvas, 64, "Load ", "");
+        holdem_draw_ok_sequence(canvas, 0, 64, "", " Load");
+        holdem_draw_back_sequence_right(canvas, 64, "New ", "");
         return;
     }
 
@@ -406,7 +406,7 @@ void holdem_draw_callback(Canvas* canvas, void* ctx) {
             holdem_draw_nav_glyph(canvas, 0, 32, HoldemNavGlyphUpDown);
             canvas_draw_str(canvas, 8, 32, " Bet +/-");
             holdem_draw_right_icon(canvas, 0, 40);
-            canvas_draw_str(canvas, 8, 40, " Reset Bet (hold for All In)");
+            canvas_draw_str(canvas, 8, 40, " Reset bet (hold for All In)");
             holdem_draw_left_icon(canvas, 0, 48);
             canvas_draw_str(canvas, 8, 48, " Fold");
             holdem_draw_back_cancel_hint(canvas, 64);
@@ -594,9 +594,14 @@ void holdem_draw_callback(Canvas* canvas, void* ctx) {
     }
 
     if(app->mode == UiModeNewGameConfirm) {
-        holdem_draw_text_centered(canvas, 36, "Start new game?");
-        holdem_draw_back_sequence(canvas, 0, 64, "", " No");
-        holdem_draw_ok_sequence_right(canvas, 64, "Yes ", "");
+        if(app->new_game_confirm_from_bot_edit) {
+            holdem_draw_text_centered(canvas, 32, "Apply changes and");
+            holdem_draw_text_centered(canvas, 40, "start new game?");
+        } else {
+            holdem_draw_text_centered(canvas, 36, "Start new game?");
+        }
+        holdem_draw_ok_sequence(canvas, 0, 64, "", " Yes");
+        holdem_draw_back_sequence_right(canvas, 64, "No ", "");
         return;
     }
 

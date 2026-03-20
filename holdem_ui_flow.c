@@ -75,7 +75,7 @@ static void handle_back_short(HoldemApp* app) {
         return;
     }
 
-    if(app->mode == UiModeTable || app->mode == UiModeActionPrompt) {
+    if(app->mode == UiModeTable || app->mode == UiModeActionPrompt || app->mode == UiModePause) {
         show_help(app);
     }
 }

@@ -6,6 +6,8 @@ This changelog follows a lightweight Keep a Changelog style.
 
 ## [Unreleased]
 
+## [1.1]
+
 ### Added
 - Support for a fourth bot, expanding tables to five total players.
 - Configurable bot difficulty tiers with Medium as the default baseline.
@@ -58,11 +60,6 @@ This changelog follows a lightweight Keep a Changelog style.
 - Hold Right now uses its own shorter 1-second all-in hold threshold instead of sharing the longer Back-hold timer.
 - Continuing hands now normalize unmatched excess before later streets and showdown, keeping visible stack and pot numbers honest after short all-ins.
 - Big-blind walks once again preserve the full blind pot on the result screen instead of incorrectly refunding the posted blind difference.
-
-## Planned
-
-### Added
-- Support for a sixth total player with a major conditional UI revision is planned for a future release.
 
 ## [1.0] - 2026-03-11
 
